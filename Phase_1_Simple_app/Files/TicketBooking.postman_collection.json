@@ -1,0 +1,485 @@
+{
+  "info": {
+    "name": "Ticket Booking",
+    "description": "All Phase 1 endpoints. Run top to bottom for a full flow. Ids are saved into collection variables by small test scripts.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "movieId",
+      "value": "1"
+    },
+    {
+      "key": "showId",
+      "value": "1"
+    },
+    {
+      "key": "seatId1",
+      "value": "1"
+    },
+    {
+      "key": "seatId2",
+      "value": "2"
+    },
+    {
+      "key": "bookingId",
+      "value": "1"
+    },
+    {
+      "key": "userId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Movies",
+      "item": [
+        {
+          "name": "Create movie",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/movies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "movies"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Dune\",\n  \"language\": \"English\",\n  \"durationMinutes\": 155\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('movieId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get all movies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/movies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "movies"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get movie by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/movies/{{movieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "movies",
+                "{{movieId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get movie by id (not found)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/movies/999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "movies",
+                "999"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Shows",
+      "item": [
+        {
+          "name": "Create show",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/shows",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shows"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"movieId\": {{movieId}},\n  \"startTime\": \"2026-10-10T19:00:00\",\n  \"price\": 250.00\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('showId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create show (movie not found)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/shows",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shows"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"movieId\": 999,\n  \"startTime\": \"2026-10-10T19:00:00\",\n  \"price\": 250.00\n}"
+            }
+          }
+        },
+        {
+          "name": "List shows of movie",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/movies/{{movieId}}/shows",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "movies",
+                "{{movieId}}",
+                "shows"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get show by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shows/{{showId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shows",
+                "{{showId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get show by id (not found)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shows/999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shows",
+                "999"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Seats",
+      "item": [
+        {
+          "name": "Get seats of show",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shows/{{showId}}/seats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shows",
+                "{{showId}}",
+                "seats"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const seats = pm.response.json();",
+                  "pm.collectionVariables.set('seatId1', seats[0].id);",
+                  "pm.collectionVariables.set('seatId2', seats[1].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get seats (show not found)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shows/999/seats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shows",
+                "999",
+                "seats"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Bookings",
+      "item": [
+        {
+          "name": "Create booking (2 seats)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"showId\": {{showId}},\n  \"userId\": {{userId}},\n  \"seatIds\": [{{seatId1}}, {{seatId2}}]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('bookingId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create booking again (seats already booked)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"showId\": {{showId}},\n  \"userId\": {{userId}},\n  \"seatIds\": [{{seatId1}}, {{seatId2}}]\n}"
+            }
+          }
+        },
+        {
+          "name": "Create booking (no seats)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"showId\": {{showId}},\n  \"userId\": {{userId}},\n  \"seatIds\": []\n}"
+            }
+          }
+        },
+        {
+          "name": "Get booking by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "{{bookingId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get booking by id (not found)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "999"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel booking",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "{{bookingId}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel booking again (already cancelled)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "{{bookingId}}",
+                "cancel"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -12,6 +12,7 @@ import com.rahul.ticketbooking.repository.BookingRepository;
 import com.rahul.ticketbooking.repository.BookingSeatRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,9 +35,10 @@ public class BookingService {
         log.debug("Booking request: showId={}, userId={}, seatCount={}", request.getShowId(), request.getUserId(), request.getSeatIds().size());
         try {
             return bookingTransactionService.createBooking(request);
-        } catch (OptimisticLockingFailureException e) {
-            log.warn("Seat conflict for showId={}, userId={}", request.getShowId(), request.getUserId());
-            throw new SeatNotAvailableException("Seat was just booked by someone else, please choose another seat");
+        } catch (ConcurrencyFailureException e) {
+            // optimistic version clash, lock timeout, or deadlock victim
+            log.warn("Seat conflict for showId={}, userId={}: {}", request.getShowId(), request.getUserId(), e.getClass().getSimpleName());
+            throw new SeatNotAvailableException("Seat is being booked by someone else, please try again");
         }
     }
 

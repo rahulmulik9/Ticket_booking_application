@@ -11,11 +11,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 
+@Tag(name = "Movies")
 @RestController
-@RequestMapping("/movies")
+@RequestMapping("/api/v1/movies")
 @RequiredArgsConstructor
 public class MovieController {
 

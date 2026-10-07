@@ -22,8 +22,7 @@ public class ShowController {
 
     @PostMapping("/movies/{movieId}/shows")
     @ResponseStatus(HttpStatus.CREATED)
-    public ShowResponse createShow(@PathVariable Long movieId,
-                                   @RequestBody CreateShowRequest request) {
+    public ShowResponse createShow(@PathVariable Long movieId, @RequestBody CreateShowRequest request) {
         return ShowResponse.from(showService.createShow(movieId, request));
     }
 

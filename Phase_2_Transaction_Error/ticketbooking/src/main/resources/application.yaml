@@ -1,13 +1,9 @@
 spring:
   application:
     name: ticketbooking
-  datasource:
-    url: jdbc:postgresql://localhost:5432/ticketdb
-    username: postgres
-    password: postgres
   jpa:
     hibernate:
-      ddl-auto: validate  #validate never changes the database. It only fails the startup if an entity does not match a table.
+      ddl-auto: validate  # validate never changes the database. It only fails the startup if an entity does not match a table.
     open-in-view: false
   flyway:
     enabled: true
@@ -18,9 +14,3 @@ management:
     web:
       exposure:
         include: health
-
-logging:
-  level:
-    root: INFO
-    com.rahul.ticketbooking: DEBUG
-    org.hibernate.SQL: DEBUG

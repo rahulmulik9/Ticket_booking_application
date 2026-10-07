@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ticketdb
+    username: postgres
+    password: postgres
+
+logging:
+  level:
+    root: INFO
+    com.rahul.ticketbooking: DEBUG
+    org.hibernate.SQL: DEBUG

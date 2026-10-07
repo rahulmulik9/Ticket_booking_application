@@ -1,8 +1,11 @@
 package com.rahul.ticketbooking.controller;
 
+import com.rahul.ticketbooking.dto.PageResponse;
 import com.rahul.ticketbooking.entity.Movie;
 import com.rahul.ticketbooking.service.MovieService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,8 +32,8 @@ public class MovieController {
     }
 
     @GetMapping
-    public List<Movie> getAllMovies() {
-        return movieService.getAllMovies();
+    public PageResponse<Movie> getAllMovies(@PageableDefault(sort = "id") Pageable pageable) {
+        return PageResponse.from(movieService.getAllMovies(pageable));
     }
 
     @GetMapping("/{id}")

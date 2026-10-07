@@ -5,6 +5,8 @@ import com.rahul.ticketbooking.exception.ResourceNotFoundException;
 import com.rahul.ticketbooking.repository.MovieRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -22,8 +24,9 @@ public class MovieService {
         return saved;
     }
 
-    public List<Movie> getAllMovies() {
-        return movieRepository.findAll();
+    //public List<Movie> getAllMovies() {return movieRepository.findAll();}
+    public Page<Movie> getAllMovies(Pageable pageable) {
+        return movieRepository.findAll(pageable);
     }
 
     public Movie getMovieById(Long id) {

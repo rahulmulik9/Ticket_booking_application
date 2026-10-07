@@ -28,7 +28,10 @@ public class BookingTransactionService {
     private final ShowService showService;
     private final SeatService seatService;
 
-    @Transactional
+
+    // Roll back the transaction on ANY exception, not just RuntimeException.
+    // By default Spring rolls back only on unchecked exceptions (RuntimeException, Error) and commits on checked ones (Exception, IOException).
+    @Transactional(rollbackFor = Exception.class)
     public BookingResponse createBooking(BookingRequest request) {
         Show show = showService.getShowById(request.getShowId());
         List<Seat> seats = seatService.getSeatsForBooking(show.getId(), request.getSeatIds());

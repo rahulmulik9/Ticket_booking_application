@@ -38,7 +38,7 @@ public class BookingService {
     }
 
     // controller calls this directly, so the proxy works
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public BookingResponse cancelBooking(Long id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found with id " + id));

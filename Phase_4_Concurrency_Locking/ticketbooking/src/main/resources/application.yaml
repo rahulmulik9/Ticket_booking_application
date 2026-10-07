@@ -12,7 +12,7 @@ spring:
       maximum-pool-size: 10
       minimum-idle: 10          # same as max = fixed-size pool
       connection-timeout: 3000  # wait at most 3 s for a free connection, then fail
-      connection-init-sql: SET lock_timeout = '3s'   # a lock wait longer than 3 s fails instead of hanging
+      connection-init-sql: SET lock_timeout = '3s'   # a lock wait longer than 3s fails instead of hanging
   jpa:
     hibernate:
       ddl-auto: validate  # validate never changes the database. It only fails the startup if an entity does not match a table.

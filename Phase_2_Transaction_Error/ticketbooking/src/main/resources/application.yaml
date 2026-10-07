@@ -18,3 +18,9 @@ management:
     web:
       exposure:
         include: health
+
+logging:
+  level:
+    root: INFO
+    com.rahul.ticketbooking: DEBUG
+    org.hibernate.SQL: DEBUG

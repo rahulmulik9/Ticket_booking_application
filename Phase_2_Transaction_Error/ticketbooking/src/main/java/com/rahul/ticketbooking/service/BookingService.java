@@ -28,6 +28,7 @@ public class BookingService {
 
     // no @Transactional here: the transaction starts in the other bean
     public BookingResponse createBooking(BookingRequest request) {
+        log.debug("Booking request: showId={}, userId={}, seatCount={}", request.getShowId(), request.getUserId(), request.getSeatIds().size());
         return bookingTransactionService.createBooking(request);
     }
 

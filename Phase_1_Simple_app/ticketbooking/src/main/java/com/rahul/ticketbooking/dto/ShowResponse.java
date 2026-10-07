@@ -15,6 +15,7 @@ public class ShowResponse {
 
     private Long id;
     private Long movieId;
+    private String movieTitle;
     private LocalDateTime startTime;
     private BigDecimal price;
 
@@ -22,6 +23,7 @@ public class ShowResponse {
         ShowResponse response = new ShowResponse();
         response.setId(show.getId());
         response.setMovieId(show.getMovie().getId());
+        response.setMovieTitle(show.getMovie().getTitle());
         response.setStartTime(show.getStartTime());
         response.setPrice(show.getPrice());
         return response;

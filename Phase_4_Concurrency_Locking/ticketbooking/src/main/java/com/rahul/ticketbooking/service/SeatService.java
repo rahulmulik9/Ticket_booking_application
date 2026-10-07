@@ -44,4 +44,14 @@ public class SeatService {
         seats.forEach(seat -> seat.setStatus(SeatStatus.AVAILABLE));
         seatRepository.saveAll(seats);
     }
+
+    // Locks the seat rows (SELECT ... FOR UPDATE). Must be called inside a transaction.
+    public List<Seat> lockSeatsForBooking(Long showId, List<Long> seatIds) {
+        List<Long> distinctIds = seatIds.stream().distinct().toList();
+        List<Seat> seats = seatRepository.findByIdInAndShowIdOrderById(distinctIds, showId);
+        if (seats.size() != distinctIds.size()) {
+            throw new ResourceNotFoundException("One or more seats do not exist for show " + showId);
+        }
+        return seats;
+    }
 }

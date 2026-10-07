@@ -34,8 +34,8 @@ public class BookingTransactionService {
     @Transactional(rollbackFor = Exception.class)
     public BookingResponse createBooking(BookingRequest request) {
         Show show = showService.getShowById(request.getShowId());
-        List<Seat> seats = seatService.getSeatsForBooking(show.getId(), request.getSeatIds());
-
+       // List<Seat> seats = seatService.getSeatsForBooking(show.getId(), request.getSeatIds());
+        List<Seat> seats = seatService.lockSeatsForBooking(show.getId(), request.getSeatIds());
         seatService.reserveSeats(seats);
 
         BigDecimal totalAmount = show.getPrice().multiply(BigDecimal.valueOf(seats.size()));

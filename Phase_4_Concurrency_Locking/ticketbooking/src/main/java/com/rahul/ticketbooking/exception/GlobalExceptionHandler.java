@@ -2,6 +2,7 @@ package com.rahul.ticketbooking.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -59,5 +60,12 @@ public class GlobalExceptionHandler {
                 .sorted()
                 .collect(Collectors.joining(", "));
         return build(HttpStatus.BAD_REQUEST, message, request);
+    }
+
+    // 409: someone else changed the same row at the same time
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(OptimisticLockingFailureException ex, HttpServletRequest request) {
+        log.warn("Optimistic lock failure on {}", request.getRequestURI());
+        return build(HttpStatus.CONFLICT, "The data was changed by someone else, please retry", request);
     }
 }

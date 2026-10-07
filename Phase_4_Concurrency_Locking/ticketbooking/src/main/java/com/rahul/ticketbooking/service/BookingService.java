@@ -7,10 +7,12 @@ import com.rahul.ticketbooking.entity.Seat;
 import com.rahul.ticketbooking.enums.BookingStatus;
 import com.rahul.ticketbooking.exception.InvalidBookingStateException;
 import com.rahul.ticketbooking.exception.ResourceNotFoundException;
+import com.rahul.ticketbooking.exception.SeatNotAvailableException;
 import com.rahul.ticketbooking.repository.BookingRepository;
 import com.rahul.ticketbooking.repository.BookingSeatRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,10 +28,16 @@ public class BookingService {
     private final SeatService seatService;
     private final BookingTransactionService bookingTransactionService;
 
-    // no @Transactional here: the transaction starts in the other bean
+    // no @Transactional here: the transaction starts in the other bean,
+    // so a commit-time lock failure comes out here, after the rollback is done.
     public BookingResponse createBooking(BookingRequest request) {
         log.debug("Booking request: showId={}, userId={}, seatCount={}", request.getShowId(), request.getUserId(), request.getSeatIds().size());
-        return bookingTransactionService.createBooking(request);
+        try {
+            return bookingTransactionService.createBooking(request);
+        } catch (OptimisticLockingFailureException e) {
+            log.warn("Seat conflict for showId={}, userId={}", request.getShowId(), request.getUserId());
+            throw new SeatNotAvailableException("Seat was just booked by someone else, please choose another seat");
+        }
     }
 
     @Transactional

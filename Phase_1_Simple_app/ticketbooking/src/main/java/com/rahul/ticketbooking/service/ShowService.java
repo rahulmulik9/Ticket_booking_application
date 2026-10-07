@@ -25,8 +25,8 @@ public class ShowService {
     private final SeatRepository seatRepository;
     private final MovieService movieService;
 
-    public Show createShow(Long movieId, CreateShowRequest request) {
-        Movie movie = movieService.getMovieById(movieId);
+    public Show createShow(CreateShowRequest request) {
+        Movie movie = movieService.getMovieById(request.getMovieId());
 
         Show show = new Show();
         show.setMovie(movie);

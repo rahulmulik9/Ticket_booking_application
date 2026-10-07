@@ -20,10 +20,10 @@ public class ShowController {
 
     private final ShowService showService;
 
-    @PostMapping("/movies/{movieId}/shows")
+    @PostMapping("/shows")
     @ResponseStatus(HttpStatus.CREATED)
-    public ShowResponse createShow(@PathVariable Long movieId, @RequestBody CreateShowRequest request) {
-        return ShowResponse.from(showService.createShow(movieId, request));
+    public ShowResponse createShow(@RequestBody CreateShowRequest request) {
+        return ShowResponse.from(showService.createShow(request));
     }
 
     @GetMapping("/movies/{movieId}/shows")

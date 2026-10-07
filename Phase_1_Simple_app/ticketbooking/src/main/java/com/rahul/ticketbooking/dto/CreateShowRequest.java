@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class CreateShowRequest {
 
+    private Long movieId;
     private LocalDateTime startTime;
     private BigDecimal price;
 }

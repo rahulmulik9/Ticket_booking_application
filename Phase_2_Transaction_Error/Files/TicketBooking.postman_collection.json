@@ -1,45 +1,15 @@
 {
   "info": {
-    "name": "Ticket Booking",
-    "description": "All Phase 1 endpoints. Run top to bottom for a full flow. Ids are saved into collection variables by small test scripts.",
+    "name": "Ticket Booking - Phase 2",
+    "description": "Phase 2: transactions, custom exceptions, global error handling, validation. Run the Setup folder first, then Bookings in order.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:8080"
-    },
-    {
-      "key": "movieId",
-      "value": "1"
-    },
-    {
-      "key": "showId",
-      "value": "1"
-    },
-    {
-      "key": "seatId1",
-      "value": "1"
-    },
-    {
-      "key": "seatId2",
-      "value": "2"
-    },
-    {
-      "key": "bookingId",
-      "value": "1"
-    },
-    {
-      "key": "userId",
-      "value": "1"
-    }
-  ],
   "item": [
     {
-      "name": "1. Movies",
+      "name": "Setup (run first)",
       "item": [
         {
-          "name": "Create movie",
+          "name": "1. Create movie",
           "request": {
             "method": "POST",
             "header": [
@@ -59,7 +29,12 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Dune\",\n  \"language\": \"English\",\n  \"durationMinutes\": 155\n}"
+              "raw": "{\n  \"title\": \"Inception\",\n  \"language\": \"English\",\n  \"durationMinutes\": 148\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -68,6 +43,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
                   "pm.collectionVariables.set('movieId', pm.response.json().id);"
                 ]
               }
@@ -75,62 +51,7 @@
           ]
         },
         {
-          "name": "Get all movies",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/movies",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "movies"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get movie by id",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/movies/{{movieId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "movies",
-                "{{movieId}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get movie by id (not found)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/movies/999",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "movies",
-                "999"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "2. Shows",
-      "item": [
-        {
-          "name": "Create show",
+          "name": "2. Create show (generates 50 seats)",
           "request": {
             "method": "POST",
             "header": [
@@ -150,7 +71,12 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"movieId\": {{movieId}},\n  \"startTime\": \"2026-10-10T19:00:00\",\n  \"price\": 250.00\n}"
+              "raw": "{\n  \"movieId\": \"{{movieId}}\",\n  \"startTime\": \"2026-10-20T18:30:00\",\n  \"price\": 250.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -159,6 +85,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
                   "pm.collectionVariables.set('showId', pm.response.json().id);"
                 ]
               }
@@ -166,89 +93,7 @@
           ]
         },
         {
-          "name": "Create show (movie not found)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/shows",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "shows"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"movieId\": 999,\n  \"startTime\": \"2026-10-10T19:00:00\",\n  \"price\": 250.00\n}"
-            }
-          }
-        },
-        {
-          "name": "List shows of movie",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/movies/{{movieId}}/shows",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "movies",
-                "{{movieId}}",
-                "shows"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get show by id",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/shows/{{showId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "shows",
-                "{{showId}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get show by id (not found)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/shows/999",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "shows",
-                "999"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "3. Seats",
-      "item": [
-        {
-          "name": "Get seats of show",
+          "name": "3. Get seats of show (saves first two seat ids)",
           "request": {
             "method": "GET",
             "header": [],
@@ -270,39 +115,22 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const seats = pm.response.json();",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "var seats = pm.response.json();",
                   "pm.collectionVariables.set('seatId1', seats[0].id);",
                   "pm.collectionVariables.set('seatId2', seats[1].id);"
                 ]
               }
             }
           ]
-        },
-        {
-          "name": "Get seats (show not found)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/shows/999/seats",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "shows",
-                "999",
-                "seats"
-              ]
-            }
-          }
         }
       ]
     },
     {
-      "name": "4. Bookings",
+      "name": "Bookings",
       "item": [
         {
-          "name": "Create booking (2 seats)",
+          "name": "1. Valid booking (201)",
           "request": {
             "method": "POST",
             "header": [
@@ -322,7 +150,12 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"showId\": {{showId}},\n  \"userId\": {{userId}},\n  \"seatIds\": [{{seatId1}}, {{seatId2}}]\n}"
+              "raw": "{\n  \"showId\": \"{{showId}}\",\n  \"userId\": 1,\n  \"seatIds\": [\n    \"{{seatId1}}\",\n    \"{{seatId2}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -331,14 +164,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.set('bookingId', pm.response.json().id);"
+                  "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                  "var b = pm.response.json();",
+                  "pm.collectionVariables.set('bookingId', b.id);",
+                  "pm.test('Booking is CONFIRMED', function () { pm.expect(b.status).to.eql('CONFIRMED'); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Create booking again (seats already booked)",
+          "name": "2. Validation error (400)",
           "request": {
             "method": "POST",
             "header": [
@@ -358,12 +194,30 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"showId\": {{showId}},\n  \"userId\": {{userId}},\n  \"seatIds\": [{{seatId1}}, {{seatId2}}]\n}"
+              "raw": "{\n  \"showId\": null,\n  \"seatIds\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Error body has status 400', function () { pm.expect(pm.response.json().status).to.eql(400); });",
+                  "pm.test('Message check', function () { pm.expect(pm.response.json().message).to.include(\"seatIds must not be empty\"); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Create booking (no seats)",
+          "name": "3. Seat already taken (409)",
           "request": {
             "method": "POST",
             "header": [
@@ -383,12 +237,159 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"showId\": {{showId}},\n  \"userId\": {{userId}},\n  \"seatIds\": []\n}"
+              "raw": "{\n  \"showId\": \"{{showId}}\",\n  \"userId\": 1,\n  \"seatIds\": [\n    \"{{seatId1}}\",\n    \"{{seatId2}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test('Error body has status 409', function () { pm.expect(pm.response.json().status).to.eql(409); });",
+                  "pm.test('Message check', function () { pm.expect(pm.response.json().message).to.include(\"already booked\"); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Get booking by id",
+          "name": "4. Seat not in this show (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"showId\": \"{{showId}}\",\n  \"userId\": 1,\n  \"seatIds\": [\n    999999\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test('Error body has status 404', function () { pm.expect(pm.response.json().status).to.eql(404); });",
+                  "pm.test('Message check', function () { pm.expect(pm.response.json().message).to.include(\"do not exist for show\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Show not found (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"showId\": 999999,\n  \"userId\": 1,\n  \"seatIds\": [\n    \"{{seatId1}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test('Error body has status 404', function () { pm.expect(pm.response.json().status).to.eql(404); });",
+                  "pm.test('Message check', function () { pm.expect(pm.response.json().message).to.include(\"Show not found\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Malformed body (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"showId\": 1,",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Error body has status 400', function () { pm.expect(pm.response.json().status).to.eql(400); });",
+                  "pm.test('Message check', function () { pm.expect(pm.response.json().message).to.include(\"malformed\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Get booking (200)",
           "request": {
             "method": "GET",
             "header": [],
@@ -402,27 +403,51 @@
                 "{{bookingId}}"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Get booking by id (not found)",
+          "name": "8. Booking not found (404)",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/bookings/999",
+              "raw": "{{baseUrl}}/bookings/999999",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "bookings",
-                "999"
+                "999999"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test('Error body has status 404', function () { pm.expect(pm.response.json().status).to.eql(404); });",
+                  "pm.test('Message check', function () { pm.expect(pm.response.json().message).to.include(\"Booking not found\"); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Cancel booking",
+          "name": "9. Cancel booking (200)",
           "request": {
             "method": "POST",
             "header": [],
@@ -437,10 +462,22 @@
                 "cancel"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Booking is CANCELLED', function () { pm.expect(pm.response.json().status).to.eql('CANCELLED'); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Cancel booking again (already cancelled)",
+          "name": "10. Cancel again (409)",
           "request": {
             "method": "POST",
             "header": [],
@@ -455,31 +492,89 @@
                 "cancel"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test('Error body has status 409', function () { pm.expect(pm.response.json().status).to.eql(409); });",
+                  "pm.test('Message check', function () { pm.expect(pm.response.json().message).to.include(\"already cancelled\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. Rebook same seats after cancel (201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"showId\": \"{{showId}}\",\n  \"userId\": 1,\n  \"seatIds\": [\n    \"{{seatId1}}\",\n    \"{{seatId2}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
         }
       ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
     },
     {
-      "name": "5. Health",
-      "item": [
-        {
-          "name": "Health check",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/actuator/health",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "actuator",
-                "health"
-              ]
-            }
-          }
-        }
-      ]
+      "key": "movieId",
+      "value": ""
+    },
+    {
+      "key": "showId",
+      "value": ""
+    },
+    {
+      "key": "seatId1",
+      "value": ""
+    },
+    {
+      "key": "seatId2",
+      "value": ""
+    },
+    {
+      "key": "bookingId",
+      "value": ""
     }
   ]
 }

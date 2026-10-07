@@ -1,6 +1,7 @@
 package com.rahul.ticketbooking.service;
 
 import com.rahul.ticketbooking.entity.Movie;
+import com.rahul.ticketbooking.exception.ResourceNotFoundException;
 import com.rahul.ticketbooking.repository.MovieRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,6 @@ public class MovieService {
 
     public Movie getMovieById(Long id) {
         return movieRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Movie not found with id " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Movie not found with id " + id));
     }
 }

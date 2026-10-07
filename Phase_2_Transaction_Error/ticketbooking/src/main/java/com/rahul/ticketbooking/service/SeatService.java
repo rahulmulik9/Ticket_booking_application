@@ -3,6 +3,7 @@ package com.rahul.ticketbooking.service;
 import com.rahul.ticketbooking.entity.Seat;
 import com.rahul.ticketbooking.enums.SeatStatus;
 import com.rahul.ticketbooking.repository.SeatRepository;
+import com.rahul.ticketbooking.exception.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,13 +22,10 @@ public class SeatService {
     }
 
     public List<Seat> getSeatsForBooking(Long showId, List<Long> seatIds) {
-        if (seatIds == null || seatIds.isEmpty()) {
-            throw new RuntimeException("Select at least one seat");
-        }
         List<Long> distinctIds = seatIds.stream().distinct().toList();
         List<Seat> seats = seatRepository.findByIdInAndShowId(distinctIds, showId);
         if (seats.size() != distinctIds.size()) {
-            throw new RuntimeException("One or more seats do not exist for show " + showId);
+            throw new ResourceNotFoundException("One or more seats do not exist for show " + showId);
         }
         return seats;
     }
@@ -35,7 +33,7 @@ public class SeatService {
     public void reserveSeats(List<Seat> seats) {
         for (Seat seat : seats) {
             if (seat.getStatus() != SeatStatus.AVAILABLE) {
-                throw new RuntimeException("Seat " + seat.getSeatNumber() + " is already booked");
+                throw new SeatNotAvailableException("Seat " + seat.getSeatNumber() + " is already booked");
             }
         }
         seats.forEach(seat -> seat.setStatus(SeatStatus.BOOKED));

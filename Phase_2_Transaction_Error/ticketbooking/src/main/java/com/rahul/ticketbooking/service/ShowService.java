@@ -4,6 +4,7 @@ import com.rahul.ticketbooking.dto.CreateShowRequest;
 import com.rahul.ticketbooking.entity.Movie;
 import com.rahul.ticketbooking.entity.Seat;
 import com.rahul.ticketbooking.entity.Show;
+import com.rahul.ticketbooking.exception.ResourceNotFoundException;
 import com.rahul.ticketbooking.repository.SeatRepository;
 import com.rahul.ticketbooking.repository.ShowRepository;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +47,7 @@ public class ShowService {
 
     public Show getShowById(Long id) {
         return showRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Show not found with id " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Show not found with id " + id));
     }
 
     private List<Seat> generateSeats(Show show) {

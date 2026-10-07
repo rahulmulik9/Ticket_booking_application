@@ -33,4 +33,12 @@ public class MovieService {
         return movieRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Movie not found with id " + id));
     }
+
+    public Page<Movie> searchMovies(String name, Pageable pageable) {
+        if (name.isBlank()) {
+            return movieRepository.findAll(pageable);
+        }
+        return movieRepository.findByTitleContainingIgnoreCase(name.trim(), pageable);
+    }
+
 }

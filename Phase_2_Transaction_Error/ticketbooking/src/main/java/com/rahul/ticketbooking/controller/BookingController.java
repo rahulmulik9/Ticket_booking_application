@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
+import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/bookings")
 @RequiredArgsConstructor
@@ -22,10 +22,9 @@ public class BookingController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BookingResponse createBooking(@RequestBody BookingRequest request) {
+    public BookingResponse createBooking(@Valid @RequestBody BookingRequest request) {
         return bookingService.createBooking(request);
     }
-
     @GetMapping("/{id}")
     public BookingResponse getBookingById(@PathVariable Long id) {
         return bookingService.getBookingById(id);

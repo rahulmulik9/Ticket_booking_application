@@ -7,7 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.validation.FieldError;
+import java.util.stream.Collectors;
 import java.time.LocalDateTime;
 
 @Slf4j
@@ -47,5 +49,15 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(),
                 LocalDateTime.now());
         return ResponseEntity.status(status).body(body);
+    }
+
+    // 400: validation failed
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .map(FieldError::getDefaultMessage)
+                .sorted()
+                .collect(Collectors.joining(", "));
+        return build(HttpStatus.BAD_REQUEST, message, request);
     }
 }

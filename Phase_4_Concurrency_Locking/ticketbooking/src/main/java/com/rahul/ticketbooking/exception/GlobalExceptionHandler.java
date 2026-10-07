@@ -2,6 +2,7 @@ package com.rahul.ticketbooking.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -66,6 +67,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(OptimisticLockingFailureException.class)
     public ResponseEntity<ErrorResponse> handleOptimisticLock(OptimisticLockingFailureException ex, HttpServletRequest request) {
         log.warn("Optimistic lock failure on {}", request.getRequestURI());
+        return build(HttpStatus.CONFLICT, "The data was changed by someone else, please retry", request);
+    }
+
+    // 409: lost a race (version clash, lock timeout, or deadlock victim)
+    @ExceptionHandler(ConcurrencyFailureException.class)
+    public ResponseEntity<ErrorResponse> handleConcurrencyFailure(ConcurrencyFailureException ex, HttpServletRequest request) {
+        log.warn("Concurrency failure on {}: {}", request.getRequestURI(), ex.getClass().getSimpleName());
         return build(HttpStatus.CONFLICT, "The data was changed by someone else, please retry", request);
     }
 }

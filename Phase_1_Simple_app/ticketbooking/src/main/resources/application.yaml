@@ -7,7 +7,7 @@ spring:
     password: postgres
   jpa:
     hibernate:
-      ddl-auto: validate  // validate never changes the database. It only fails the startup if an entity does not match a table.
+      ddl-auto: validate  #validate never changes the database. It only fails the startup if an entity does not match a table.
     open-in-view: false
   flyway:
     enabled: true

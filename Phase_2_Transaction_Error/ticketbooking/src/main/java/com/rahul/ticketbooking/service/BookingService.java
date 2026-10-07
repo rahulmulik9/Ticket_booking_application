@@ -5,6 +5,8 @@ import com.rahul.ticketbooking.dto.BookingResponse;
 import com.rahul.ticketbooking.entity.Booking;
 import com.rahul.ticketbooking.entity.Seat;
 import com.rahul.ticketbooking.enums.BookingStatus;
+import com.rahul.ticketbooking.exception.InvalidBookingStateException;
+import com.rahul.ticketbooking.exception.ResourceNotFoundException;
 import com.rahul.ticketbooking.repository.BookingRepository;
 import com.rahul.ticketbooking.repository.BookingSeatRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +34,7 @@ public class BookingService {
     @Transactional
     public BookingResponse getBookingById(Long id) {
         Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found with id " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found with id " + id));
         List<Long> seatIds = bookingSeatRepository.findSeatIdsByBookingId(id);
         return BookingResponse.from(booking, seatIds);
     }
@@ -41,10 +43,10 @@ public class BookingService {
     @Transactional(rollbackFor = Exception.class)
     public BookingResponse cancelBooking(Long id) {
         Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found with id " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found with id " + id));
 
         if (booking.getStatus() == BookingStatus.CANCELLED) {
-            throw new RuntimeException("Booking " + id + " is already cancelled");
+            throw new InvalidBookingStateException("Booking " + id + " is already cancelled");
         }
 
         booking.setStatus(BookingStatus.CANCELLED);

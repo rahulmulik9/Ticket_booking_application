@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,6 +19,7 @@ public class MovieService {
 
     private final MovieRepository movieRepository;
 
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
     public Movie createMovie(Movie movie) {
         Movie saved = movieRepository.save(movie);
         log.info("Created movie with id {}", saved.getId());

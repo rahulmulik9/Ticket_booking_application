@@ -4,7 +4,7 @@
   <component name="MavenProjectsManager">
     <option name="originalFiles">
       <list>
-        <option value="$PROJECT_DIR$/Phase_3_Database_perfomance/ticketbooking/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_4_Concurrency_Locking/ticketbooking/pom.xml" />
       </list>
     </option>
   </component>

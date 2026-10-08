@@ -4,5 +4,6 @@
     <file url="file://$PROJECT_DIR$/Phase_1_Simple_app/ticketbooking/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Phase_2_Transaction_Error/ticketbooking/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Phase_3_Database_perfomance/ticketbooking/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Phase_4_Concurrency_Locking/ticketbooking/src/main/java" charset="UTF-8" />
   </component>
 </project>

@@ -1,65 +1,13 @@
 {
   "info": {
-    "name": "Ticket Booking - Phase 5",
-    "description": "Ticket Booking API, Phase 5 (JWT and roles).\n\nHOW TO RUN\n1. Start the app (dev profile) and PostgreSQL.\n2. Run folder \"0. Register users (run once)\".\n3. Promote the organizer, in psql:\n   UPDATE users SET role = 'ORGANIZER' WHERE email = 'organizer@example.com';\n4. Run folders 1 to 7 in order (right click the collection > Run collection). Tokens, ids, and seat ids are saved into collection variables by the test scripts.\n\nRe-running is safe: each run creates a new movie and show, so seats are fresh. Registration accepts 201 or 409.\nThe role is stored inside the token, so always log in AFTER promoting a user.",
+    "name": "Ticket Booking - Phase 5 (core)",
+    "description": "Ticket Booking API, Phase 5: the important requests only.\n\nHOW TO RUN\n1. Start the app with the dev profile (DevDataSeeder creates organizer@example.com and admin@example.com, password Secret123).\n2. Run the folders in order. Tokens and ids are saved into collection variables by the test scripts.\nRe-running is safe: registration accepts 201 or 409, and each run creates a new movie and show.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "0. Register users (run once)",
+      "name": "1. Auth",
       "item": [
-        {
-          "name": "Register organizer",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "register"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Olivia Organizer\",\n  \"email\": \"{{organizerEmail}}\",\n  \"password\": \"{{password}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"201 created, or 409 if already registered\", function () { pm.expect(pm.response.code).to.be.oneOf([201, 409]); });",
-                  "if (pm.response.code === 201) {",
-                  "  const b = pm.response.json();",
-                  "  pm.test(\"role is USER\", function () { pm.expect(b.role).to.eql(\"USER\"); });",
-                  "  pm.test(\"no password or hash in response\", function () { pm.expect(b).to.not.have.property(\"password\"); pm.expect(b).to.not.have.property(\"passwordHash\"); });",
-                  "}"
-                ]
-              }
-            }
-          ]
-        },
         {
           "name": "Register user A",
           "request": {
@@ -163,15 +111,9 @@
               }
             }
           ]
-        }
-      ],
-      "description": "Run this folder once. Then promote the organizer in psql (see the notes in the collection description), and run the other folders."
-    },
-    {
-      "name": "1. Auth",
-      "item": [
+        },
         {
-          "name": "Login organizer",
+          "name": "Login organizer (seeded in dev)",
           "request": {
             "method": "POST",
             "header": [
@@ -336,196 +278,6 @@
           ]
         },
         {
-          "name": "Register - duplicate email (409)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "register"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Alice Again\",\n  \"email\": \"{{userAEmail}}\",\n  \"password\": \"{{password}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 409\", function () { pm.response.to.have.status(409); });",
-                  "pm.test(\"Message contains: already registered\", function () { pm.expect(pm.response.json().message).to.include(\"already registered\"); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Register - same email, different case (409)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "register"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Alice Again\",\n  \"email\": \"USERA@EXAMPLE.COM\",\n  \"password\": \"{{password}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 409\", function () { pm.response.to.have.status(409); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Register - invalid body (400)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "register"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"\",\n  \"email\": \"abc\",\n  \"password\": \"123\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 400\", function () { pm.response.to.have.status(400); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Register - password over 72 chars (400)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "register"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Long\",\n  \"email\": \"long@example.com\",\n  \"password\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 400\", function () { pm.response.to.have.status(400); });",
-                  "pm.test(\"Message contains: password must be 8 to 72 characters\", function () { pm.expect(pm.response.json().message).to.include(\"password must be 8 to 72 characters\"); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
           "name": "Login - wrong password (401)",
           "request": {
             "method": "POST",
@@ -566,305 +318,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status is 401\", function () { pm.response.to.have.status(401); });",
-                  "pm.test(\"Message contains: Invalid email or password\", function () { pm.expect(pm.response.json().message).to.include(\"Invalid email or password\"); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Login - unknown email (401, same message)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "login"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"nobody@example.com\",\n  \"password\": \"{{password}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 401\", function () { pm.response.to.have.status(401); });",
-                  "pm.test(\"Message contains: Invalid email or password\", function () { pm.expect(pm.response.json().message).to.include(\"Invalid email or password\"); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Login - missing fields (400)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "login"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"\",\n  \"password\": \"\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 400\", function () { pm.response.to.have.status(400); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Refresh token (user A)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/refresh",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "refresh"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"{{userARefreshToken}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.collectionVariables.set(\"oldUserARefreshToken\", pm.collectionVariables.get(\"userARefreshToken\"));"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "const b = pm.response.json();",
-                  "pm.test(\"new refresh token differs from the old one (rotation)\", function () { pm.expect(b.refreshToken).to.not.eql(pm.collectionVariables.get(\"oldUserARefreshToken\")); });",
-                  "pm.collectionVariables.set(\"userAToken\", b.accessToken);",
-                  "pm.collectionVariables.set(\"userARefreshToken\", b.refreshToken);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Refresh - reuse old token (401)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/refresh",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "refresh"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"{{oldUserARefreshToken}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 401\", function () { pm.response.to.have.status(401); });",
-                  "pm.test(\"Message contains: Invalid or expired refresh token\", function () { pm.expect(pm.response.json().message).to.include(\"Invalid or expired refresh token\"); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Refresh - garbage token (401)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/refresh",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "refresh"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"not-a-real-token\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
                   "pm.test(\"Status is 401\", function () { pm.response.to.have.status(401); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Refresh - blank token (400)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/refresh",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "refresh"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 400\", function () { pm.response.to.have.status(400); });"
                 ]
               }
             }
@@ -873,7 +327,7 @@
       ]
     },
     {
-      "name": "2. Movies",
+      "name": "2. Movies, shows, seats",
       "item": [
         {
           "name": "Create movie as organizer (201)",
@@ -923,70 +377,14 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
-                  "const b = pm.response.json();",
-                  "pm.collectionVariables.set(\"movieId\", b.id);",
-                  "pm.test(\"title saved\", function () { pm.expect(b.title).to.eql(\"Postman Test Movie\"); });"
+                  "pm.collectionVariables.set(\"movieId\", pm.response.json().id);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Create movie - cannot choose the id (mass assignment)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/movies",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "movies"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{organizerToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"id\": 1,\n  \"title\": \"Id Hijack Attempt\",\n  \"language\": \"English\",\n  \"durationMinutes\": 90\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
-                  "pm.test(\"id was NOT taken from the body\", function () { pm.expect(pm.response.json().id).to.not.eql(1); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Create movie as user (403)",
+          "name": "Create movie as normal user (403)",
           "request": {
             "method": "POST",
             "header": [
@@ -1038,264 +436,6 @@
             }
           ]
         },
-        {
-          "name": "Create movie without token (401)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/movies",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "movies"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Should Fail\",\n  \"language\": \"English\",\n  \"durationMinutes\": 100\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 401\", function () { pm.response.to.have.status(401); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Create movie - invalid body (400)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/movies",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "movies"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{organizerToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"\",\n  \"language\": \"\",\n  \"durationMinutes\": -5\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 400\", function () { pm.response.to.have.status(400); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "List movies - public (200)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/movies?page=0&size=5&sort=id,desc",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "movies"
-              ],
-              "query": [
-                {
-                  "key": "page",
-                  "value": "0"
-                },
-                {
-                  "key": "size",
-                  "value": "5"
-                },
-                {
-                  "key": "sort",
-                  "value": "id,desc"
-                }
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "const b = pm.response.json();",
-                  "pm.test(\"page shape\", function () { pm.expect(b).to.have.property(\"content\"); pm.expect(b).to.have.property(\"totalElements\"); pm.expect(b).to.have.property(\"totalPages\"); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Search movies by name - public (200)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/movies?name=inception",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "movies"
-              ],
-              "query": [
-                {
-                  "key": "name",
-                  "value": "inception"
-                }
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"finds Inception\", function () { pm.expect(pm.response.json().content.length).to.be.above(0); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Get movie by id - public (200)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/movies/{{movieId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "movies",
-                "{{movieId}}"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"id matches\", function () { pm.expect(String(pm.response.json().id)).to.eql(pm.collectionVariables.get(\"movieId\")); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Get movie - not found (404)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/movies/999999",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "movies",
-                "999999"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 404\", function () { pm.response.to.have.status(404); });"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "3. Shows",
-      "item": [
         {
           "name": "Create show as organizer (201)",
           "request": {
@@ -1344,163 +484,36 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
-                  "const b = pm.response.json();",
-                  "pm.collectionVariables.set(\"showId\", b.id);",
-                  "pm.test(\"linked to the movie\", function () { pm.expect(String(b.movieId)).to.eql(pm.collectionVariables.get(\"movieId\")); });"
+                  "pm.collectionVariables.set(\"showId\", pm.response.json().id);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Create show as user (403)",
+          "name": "List movies - public (200)",
           "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/shows",
+              "raw": "{{baseUrl}}/api/v1/movies?page=0&size=5",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "shows"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
+                "movies"
+              ],
+              "query": [
                 {
-                  "key": "token",
-                  "value": "{{userAToken}}",
-                  "type": "string"
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "5"
                 }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"movieId\": {{movieId}},\n  \"startTime\": \"2030-01-01T18:00:00\",\n  \"price\": 250.00\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 403\", function () { pm.response.to.have.status(403); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Create show without token (401)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/shows",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "shows"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"movieId\": {{movieId}},\n  \"startTime\": \"2030-01-01T18:00:00\",\n  \"price\": 250.00\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 401\", function () { pm.response.to.have.status(401); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "List shows of a movie - public (200)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/movies/{{movieId}}/shows",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "movies",
-                "{{movieId}}",
-                "shows"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"has the new show\", function () { pm.expect(pm.response.json().length).to.be.above(0); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Get show by id - public (200)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/shows/{{showId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "shows",
-                "{{showId}}"
               ]
             },
             "auth": {
@@ -1519,44 +532,6 @@
             }
           ]
         },
-        {
-          "name": "Get show - not found (404)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/shows/999999",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "shows",
-                "999999"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 404\", function () { pm.response.to.have.status(404); });"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "4. Seats",
-      "item": [
         {
           "name": "List seats of the show - public (200)",
           "request": {
@@ -1586,9 +561,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "const seats = pm.response.json();",
-                  "const free = seats.filter(function (s) { return s.status === \"AVAILABLE\"; });",
-                  "pm.test(\"show has at least 2 free seats\", function () { pm.expect(free.length).to.be.at.least(2); });",
+                  "const free = pm.response.json().filter(function (s) { return s.status === \"AVAILABLE\"; });",
                   "pm.collectionVariables.set(\"seatId1\", free[0].id);",
                   "pm.collectionVariables.set(\"seatId2\", free[1].id);"
                 ]
@@ -1599,56 +572,10 @@
       ]
     },
     {
-      "name": "5. Bookings",
+      "name": "3. Bookings",
       "item": [
         {
-          "name": "Create booking without token (401)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/bookings",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "bookings"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"showId\": {{showId}},\n  \"seatIds\": [{{seatId1}}, {{seatId2}}]\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 401\", function () { pm.response.to.have.status(401); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Create booking as user A (201) - body tries to spoof userId",
+          "name": "Create booking as user A (201)",
           "request": {
             "method": "POST",
             "header": [
@@ -1680,7 +607,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"showId\": {{showId}},\n  \"userId\": {{userBId}},\n  \"seatIds\": [{{seatId1}}, {{seatId2}}]\n}",
+              "raw": "{\n  \"showId\": {{showId}},\n  \"seatIds\": [{{seatId1}}, {{seatId2}}]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1697,9 +624,7 @@
                   "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
                   "const b = pm.response.json();",
                   "pm.collectionVariables.set(\"bookingId\", b.id);",
-                  "pm.test(\"status is CONFIRMED\", function () { pm.expect(b.status).to.eql(\"CONFIRMED\"); });",
-                  "pm.test(\"booking belongs to user A (from the token), not the userId in the body\", function () { pm.expect(String(b.userId)).to.eql(pm.collectionVariables.get(\"userAId\")); });",
-                  "pm.test(\"both seats booked\", function () { pm.expect(b.seatIds.length).to.eql(2); });"
+                  "pm.test(\"booking owner comes from the token\", function () { pm.expect(String(b.userId)).to.eql(pm.collectionVariables.get(\"userAId\")); });"
                 ]
               }
             }
@@ -1759,59 +684,6 @@
           ]
         },
         {
-          "name": "Create booking - empty seat list (400)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/bookings",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "bookings"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{userAToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"showId\": {{showId}},\n  \"seatIds\": []\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 400\", function () { pm.response.to.have.status(400); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
           "name": "My bookings - user A (200)",
           "request": {
             "method": "GET",
@@ -1845,87 +717,14 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"contains the new booking\", function () { const ids = pm.response.json().map(function (b) { return String(b.id); }); pm.expect(ids).to.include(pm.collectionVariables.get(\"bookingId\")); });",
-                  "pm.test(\"every booking belongs to user A\", function () { pm.response.json().forEach(function (b) { pm.expect(String(b.userId)).to.eql(pm.collectionVariables.get(\"userAId\")); }); });"
+                  "pm.test(\"contains the new booking\", function () { const ids = pm.response.json().map(function (b) { return String(b.id); }); pm.expect(ids).to.include(pm.collectionVariables.get(\"bookingId\")); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "My bookings - user B sees none of A's (200)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/bookings",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "bookings"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{userBToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"A's booking is not listed\", function () { const ids = pm.response.json().map(function (b) { return String(b.id); }); pm.expect(ids).to.not.include(pm.collectionVariables.get(\"bookingId\")); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "My bookings without token (401)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/bookings",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "bookings"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 401\", function () { pm.response.to.have.status(401); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Get booking as owner (200)",
+          "name": "Get A's booking as user B (404)",
           "request": {
             "method": "GET",
             "header": [],
@@ -1939,120 +738,6 @@
                 "v1",
                 "bookings",
                 "{{bookingId}}"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{userAToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Get booking as another user (404)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "bookings",
-                "{{bookingId}}"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{userBToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 404\", function () { pm.response.to.have.status(404); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Get booking without token (401)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "bookings",
-                "{{bookingId}}"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 401\", function () { pm.response.to.have.status(401); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Cancel booking as another user (404)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/cancel",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "bookings",
-                "{{bookingId}}",
-                "cancel"
               ]
             },
             "auth": {
@@ -2119,85 +804,14 @@
               }
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "name": "4. Refresh and logout",
+      "item": [
         {
-          "name": "Cancel booking again (409)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/cancel",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "bookings",
-                "{{bookingId}}",
-                "cancel"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{userAToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 409\", function () { pm.response.to.have.status(409); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Seats are free again after cancel (200)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/shows/{{showId}}/seats",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "shows",
-                "{{showId}}",
-                "seats"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"seat 1 is AVAILABLE again\", function () { const s = pm.response.json().find(function (x) { return String(x.id) === pm.collectionVariables.get(\"seatId1\"); }); pm.expect(s.status).to.eql(\"AVAILABLE\"); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Book the same seats again as user B after cancel (201)",
+          "name": "Refresh token (user A)",
           "request": {
             "method": "POST",
             "header": [
@@ -2207,29 +821,23 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/bookings",
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "bookings"
+                "auth",
+                "refresh"
               ]
             },
             "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{userBToken}}",
-                  "type": "string"
-                }
-              ]
+              "type": "noauth"
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"showId\": {{showId}},\n  \"seatIds\": [{{seatId1}}, {{seatId2}}]\n}",
+              "raw": "{\n  \"refreshToken\": \"{{userARefreshToken}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2239,79 +847,61 @@
           },
           "event": [
             {
-              "listen": "test",
+              "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
-                  "pm.collectionVariables.set(\"bookingIdB\", pm.response.json().id);"
+                  "pm.collectionVariables.set(\"oldUserARefreshToken\", pm.collectionVariables.get(\"userARefreshToken\"));"
                 ]
               }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "6. Token checks",
-      "item": [
-        {
-          "name": "Garbage token (401)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/bookings",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "bookings"
-              ]
             },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{garbageToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status is 401\", function () { pm.response.to.have.status(401); });"
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set(\"userAToken\", b.accessToken);",
+                  "pm.collectionVariables.set(\"userARefreshToken\", b.refreshToken);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Unlisted URL without token (401, safety net)",
+          "name": "Refresh - reuse the old token (401)",
           "request": {
-            "method": "GET",
-            "header": [],
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/something-new",
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "something-new"
+                "auth",
+                "refresh"
               ]
             },
             "auth": {
               "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{oldUserARefreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -2374,7 +964,7 @@
           ]
         },
         {
-          "name": "Refresh with the logged-out token (401)",
+          "name": "Refresh after logout (401)",
           "request": {
             "method": "POST",
             "header": [
@@ -2419,90 +1009,6 @@
               }
             }
           ]
-        },
-        {
-          "name": "Logout - unknown token still 204",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/logout",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "logout"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"unknown-token\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 204\", function () { pm.response.to.have.status(204); });"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "7. Health",
-      "item": [
-        {
-          "name": "Health (200, public)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/actuator/health",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "actuator",
-                "health"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"status UP\", function () { pm.expect(pm.response.json().status).to.eql(\"UP\"); });"
-                ]
-              }
-            }
-          ]
         }
       ]
     }
@@ -2527,10 +1033,6 @@
     {
       "key": "userBEmail",
       "value": "userb@example.com"
-    },
-    {
-      "key": "garbageToken",
-      "value": "not.a.jwt"
     },
     {
       "key": "organizerToken",
@@ -2590,10 +1092,6 @@
     },
     {
       "key": "bookingId",
-      "value": ""
-    },
-    {
-      "key": "bookingIdB",
       "value": ""
     }
   ]

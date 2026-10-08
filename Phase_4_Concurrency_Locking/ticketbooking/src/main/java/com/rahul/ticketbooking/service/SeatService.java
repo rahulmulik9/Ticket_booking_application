@@ -23,7 +23,7 @@ public class SeatService {
 
     public List<Seat> getSeatsForBooking(Long showId, List<Long> seatIds) {
         List<Long> distinctIds = seatIds.stream().distinct().toList();
-        List<Seat> seats = seatRepository.findByIdInAndShowId(distinctIds, showId);
+        List<Seat> seats = seatRepository.findByIdInAndShowIdOrderById(distinctIds, showId);
         if (seats.size() != distinctIds.size()) {
             throw new ResourceNotFoundException("One or more seats do not exist for show " + showId);
         }

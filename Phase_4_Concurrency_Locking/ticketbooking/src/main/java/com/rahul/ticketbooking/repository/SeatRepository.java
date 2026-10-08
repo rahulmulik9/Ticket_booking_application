@@ -18,8 +18,11 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     and s.show_id = ?*/
     List<Seat> findByIdInAndShowId(List<Long> ids, Long showId);
 
-    // select ... for update (Hibernate may print "for no key update", same idea for us).
-    // The lock is held until the surrounding transaction commits or rolls back.
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
+//    // select ... for update (Hibernate may print "for no key update", same idea for us).
+//    // The lock is held until the surrounding transaction commits or rolls back.
+//    @Lock(LockModeType.PESSIMISTIC_WRITE)
+//    List<Seat> findByIdInAndShowIdOrderById(List<Long> ids, Long showId);
+
+    // Ordered by id on purpose: every booking reads its seats in the same order.
     List<Seat> findByIdInAndShowIdOrderById(List<Long> ids, Long showId);
 }

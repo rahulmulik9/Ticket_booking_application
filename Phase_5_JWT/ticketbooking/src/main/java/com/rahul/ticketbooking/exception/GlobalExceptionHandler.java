@@ -76,4 +76,9 @@ public class GlobalExceptionHandler {
         log.warn("Concurrency failure on {}: {}", request.getRequestURI(), ex.getClass().getSimpleName());
         return build(HttpStatus.CONFLICT, "The data was changed by someone else, please retry", request);
     }
+    // 401: wrong email or password
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex, HttpServletRequest request) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
+    }
 }

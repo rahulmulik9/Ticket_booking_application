@@ -70,8 +70,8 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, "The data was changed by someone else, please retry", request);
     }
 
-    // 409: lost a race (version clash, lock timeout, or deadlock victim)
-    @ExceptionHandler(ConcurrencyFailureException.class)
+    // 409
+    @ExceptionHandler({SeatNotAvailableException.class, InvalidBookingStateException.class, EmailAlreadyExistsException.class})
     public ResponseEntity<ErrorResponse> handleConcurrencyFailure(ConcurrencyFailureException ex, HttpServletRequest request) {
         log.warn("Concurrency failure on {}: {}", request.getRequestURI(), ex.getClass().getSimpleName());
         return build(HttpStatus.CONFLICT, "The data was changed by someone else, please retry", request);

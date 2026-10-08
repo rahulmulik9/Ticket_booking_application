@@ -2,6 +2,8 @@ package com.rahul.ticketbooking.controller;
 
 import com.rahul.ticketbooking.dto.RegisterRequest;
 import com.rahul.ticketbooking.dto.UserResponse;
+import com.rahul.ticketbooking.dto.LoginResponse;
+import com.rahul.ticketbooking.dto.LoginRequest;
 import com.rahul.ticketbooking.service.AuthService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -25,5 +27,10 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     public UserResponse register(@Valid @RequestBody RegisterRequest request) {
         return authService.register(request);
+    }
+
+    @PostMapping("/login")
+    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
+        return authService.login(request);
     }
 }

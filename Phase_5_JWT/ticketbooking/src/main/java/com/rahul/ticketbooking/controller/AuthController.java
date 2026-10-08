@@ -1,9 +1,6 @@
 package com.rahul.ticketbooking.controller;
 
-import com.rahul.ticketbooking.dto.RegisterRequest;
-import com.rahul.ticketbooking.dto.UserResponse;
-import com.rahul.ticketbooking.dto.LoginResponse;
-import com.rahul.ticketbooking.dto.LoginRequest;
+import com.rahul.ticketbooking.dto.*;
 import com.rahul.ticketbooking.service.AuthService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -32,5 +29,16 @@ public class AuthController {
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/refresh")
+    public LoginResponse refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return authService.refresh(request.getRefreshToken());
+    }
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logout(@Valid @RequestBody RefreshTokenRequest request) {
+        authService.logout(request.getRefreshToken());   // always 204, even for an unknown token
     }
 }

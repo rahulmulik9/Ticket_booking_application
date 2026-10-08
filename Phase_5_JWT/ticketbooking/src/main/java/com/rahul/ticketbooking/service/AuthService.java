@@ -9,6 +9,7 @@ import com.rahul.ticketbooking.enums.Role;
 import com.rahul.ticketbooking.exception.EmailAlreadyExistsException;
 import com.rahul.ticketbooking.exception.InvalidCredentialsException;
 import com.rahul.ticketbooking.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,6 +23,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
 
     public UserResponse register(RegisterRequest request) {
         // same person must not get two accounts because of upper/lower case
@@ -54,6 +56,23 @@ public class AuthService {
         }
 
         log.info("User {} logged in", user.getId());
-        return new LoginResponse(jwtService.generateAccessToken(user), "Bearer", jwtService.getAccessTokenSeconds());
+        return new LoginResponse(jwtService.generateAccessToken(user), refreshTokenService.create(user),
+                "Bearer", jwtService.getAccessTokenSeconds());
     }
+
+
+    @Transactional
+    public LoginResponse refresh(String rawRefreshToken) {
+        User user = refreshTokenService.consume(rawRefreshToken);
+        String newRefreshToken = refreshTokenService.create(user);   // rotation: a new one replaces the old one
+        log.info("Refreshed tokens for user {}", user.getId());      // never log the tokens themselves
+        // the role is read from the database here, so a role change takes effect at the next refresh
+        return new LoginResponse(jwtService.generateAccessToken(user), newRefreshToken,
+                "Bearer", jwtService.getAccessTokenSeconds());
+    }
+
+    public void logout(String rawRefreshToken) {
+        refreshTokenService.revoke(rawRefreshToken);
+    }
+
 }

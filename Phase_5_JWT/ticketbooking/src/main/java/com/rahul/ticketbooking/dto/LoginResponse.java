@@ -8,6 +8,7 @@ import lombok.Getter;
 public class LoginResponse {
 
     private String accessToken;
+    private String refreshToken;
     private String tokenType;        // always "Bearer"
-    private long expiresInSeconds;
+    private long expiresInSeconds;   // lifetime of the access token
 }

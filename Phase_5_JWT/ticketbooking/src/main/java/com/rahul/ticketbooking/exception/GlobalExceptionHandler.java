@@ -71,11 +71,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, "The data was changed by someone else, please retry", request);
     }
 
-    // 409
-    @ExceptionHandler({SeatNotAvailableException.class, InvalidBookingStateException.class, EmailAlreadyExistsException.class})
+    // 409: concurrency failure
+    @ExceptionHandler(ConcurrencyFailureException.class)
     public ResponseEntity<ErrorResponse> handleConcurrencyFailure(ConcurrencyFailureException ex, HttpServletRequest request) {
         log.warn("Concurrency failure on {}: {}", request.getRequestURI(), ex.getClass().getSimpleName());
-        return build(HttpStatus.CONFLICT, "The data was changed by someone else, please retry", request);
+        return build(HttpStatus.CONFLICT,"The data was changed by someone else, please retry", request);
     }
     // 401: wrong email or password
     @ExceptionHandler(InvalidCredentialsException.class)

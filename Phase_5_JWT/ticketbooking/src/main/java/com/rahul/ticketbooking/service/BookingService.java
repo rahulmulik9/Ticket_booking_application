@@ -31,29 +31,28 @@ public class BookingService {
 
     // no @Transactional here: the transaction starts in the other bean,
     // so a commit-time lock failure comes out here, after the rollback is done.
-    public BookingResponse createBooking(BookingRequest request) {
-        log.debug("Booking request: showId={}, userId={}, seatCount={}", request.getShowId(), request.getUserId(), request.getSeatIds().size());
+    public BookingResponse createBooking(Long userId, BookingRequest request) {
+        log.debug("Booking request: showId={}, userId={}, seatCount={}", request.getShowId(), userId, request.getSeatIds().size());
         try {
-            return bookingTransactionService.createBooking(request);
+            return bookingTransactionService.createBooking(userId, request);
         } catch (ConcurrencyFailureException e) {
-            // optimistic version clash, lock timeout, or deadlock victim
-            log.warn("Seat conflict for showId={}, userId={}: {}", request.getShowId(), request.getUserId(), e.getClass().getSimpleName());
+            log.warn("Seat conflict for showId={}, userId={}: {}", request.getShowId(), userId, e.getClass().getSimpleName());
             throw new SeatNotAvailableException("Seat is being booked by someone else, please try again");
         }
     }
 
-    @Transactional
-    public BookingResponse getBookingById(Long id) {
-        Booking booking = bookingRepository.findById(id)
+    @Transactional(readOnly = true)
+    public BookingResponse getBookingById(Long id, Long userId) {
+        Booking booking = bookingRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found with id " + id));
         List<Long> seatIds = bookingSeatRepository.findSeatIdsByBookingId(id);
         return BookingResponse.from(booking, seatIds);
     }
 
-    // controller calls this directly, so the proxy works
+
     @Transactional(rollbackFor = Exception.class)
-    public BookingResponse cancelBooking(Long id) {
-        Booking booking = bookingRepository.findById(id)
+    public BookingResponse cancelBooking(Long id, Long userId) {
+        Booking booking = bookingRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found with id " + id));
 
         if (booking.getStatus() == BookingStatus.CANCELLED) {
@@ -68,5 +67,23 @@ public class BookingService {
 
         log.info("Cancelled booking {} and released {} seats", id, seats.size());
         return BookingResponse.from(booking, seats.stream().map(Seat::getId).sorted().toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<BookingResponse> getMyBookings(Long userId) {
+        List<Booking> bookings = bookingRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        if (bookings.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> bookingIds = bookings.stream().map(Booking::getId).toList();
+        Map<Long, List<Long>> seatIdsByBooking = new HashMap<>();
+        for (Object[] row : bookingSeatRepository.findBookingSeatPairs(bookingIds)) {
+            seatIdsByBooking.computeIfAbsent((Long) row[0], key -> new ArrayList<>()).add((Long) row[1]);
+        }
+
+        return bookings.stream()
+                .map(b -> BookingResponse.from(b, seatIdsByBooking.getOrDefault(b.getId(), List.of())))
+                .toList();
     }
 }

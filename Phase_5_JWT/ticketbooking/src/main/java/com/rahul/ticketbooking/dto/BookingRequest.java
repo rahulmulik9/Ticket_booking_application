@@ -16,10 +16,6 @@ public class BookingRequest {
     @Positive(message = "showId must be positive")
     private Long showId;
 
-    @NotNull(message = "userId is required")
-    @Positive(message = "userId must be positive")
-    private Long userId;
-
     @NotEmpty(message = "seatIds must not be empty")
     private List<@NotNull(message = "seatId must not be null") @Positive(message = "seatId must be positive") Long> seatIds;
 }

@@ -48,6 +48,14 @@ CREATE TABLE booking_seats (
     seat_id    BIGINT NOT NULL REFERENCES seats (id)
 );
 
+CREATE TABLE refresh_tokens (
+    id         BIGSERIAL PRIMARY KEY,
+    user_id    BIGINT      NOT NULL REFERENCES users (id),
+    token_hash VARCHAR(64) NOT NULL,          -- SHA-256 hex, never the raw token
+    expires_at TIMESTAMP   NOT NULL,
+    revoked    BOOLEAN     NOT NULL DEFAULT FALSE,
+    CONSTRAINT uq_refresh_tokens_hash UNIQUE (token_hash)   -- also gives the lookup index
+);
 -- ============ Indexes ============
 -- Postgres does not index foreign keys automatically, so each lookup path gets one.
 

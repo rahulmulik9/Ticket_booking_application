@@ -2,9 +2,11 @@ package com.rahul.cinemaservice.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -21,6 +23,25 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage(), request);
+    }
+
+    // 409: the seat was already BOOKED when we looked
+    @ExceptionHandler(SeatNotAvailableException.class)
+    public ResponseEntity<ErrorResponse> handleSeatTaken(SeatNotAvailableException ex, HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
+    // 409: two requests read the same seat, the other one saved first (the @Version check failed)
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleLockClash(OptimisticLockingFailureException ex, HttpServletRequest request) {
+        log.info("Seat version clash on {}", request.getRequestURI());
+        return build(HttpStatus.CONFLICT, "Someone else just took one of these seats, please try again", request);
+    }
+
+    // 403: thrown by @PreAuthorize inside a service. Without this handler the catch-all below would turn it into a 500.
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, "You do not have permission to do this", request);
     }
 
     // 400: validation failed

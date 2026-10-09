@@ -53,10 +53,14 @@ public class Booking {
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
     private List<BookingSeat> bookingSeats = new ArrayList<>();
 
+    @Column
+    private Long paymentId;
+
     @PrePersist
     void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
+
 
     public void addSeat(Long seatId) {
         BookingSeat bookingSeat = new BookingSeat();

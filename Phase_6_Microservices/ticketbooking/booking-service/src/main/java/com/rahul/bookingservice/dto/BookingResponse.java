@@ -22,6 +22,7 @@ public class BookingResponse {
     private BigDecimal totalAmount;
     private BookingStatus status;
     private LocalDateTime createdAt;
+    private Long paymentId;
 
     public static BookingResponse from(Booking booking) {
         BookingResponse response = new BookingResponse();
@@ -32,6 +33,7 @@ public class BookingResponse {
         response.setTotalAmount(booking.getTotalAmount());
         response.setStatus(booking.getStatus());
         response.setCreatedAt(booking.getCreatedAt());
+        response.setPaymentId(booking.getPaymentId());
         return response;
     }
 }

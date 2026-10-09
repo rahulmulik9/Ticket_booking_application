@@ -3,6 +3,7 @@ package com.rahul.cinemaservice.controller;
 import com.rahul.cinemaservice.dto.CreateMovieRequest;
 import com.rahul.cinemaservice.dto.MovieResponse;
 import com.rahul.cinemaservice.dto.PageResponse;
+import com.rahul.cinemaservice.mapper.MovieMapper;
 import com.rahul.cinemaservice.service.MovieService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,27 +27,29 @@ import org.springframework.web.bind.annotation.RestController;
 public class MovieController {
 
     private final MovieService movieService;
+    private final MovieMapper movieMapper;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public MovieResponse createMovie(@Valid @RequestBody CreateMovieRequest request) {
-        return MovieResponse.from(movieService.createMovie(request));
+        return movieMapper.toResponse(movieService.createMovie(request));
     }
 
     @GetMapping
     public PageResponse<MovieResponse> getAllMovies(@PageableDefault(sort = "id") Pageable pageable) {
-        return PageResponse.from(movieService.getAllMovies(pageable).map(MovieResponse::from));
+        return PageResponse.from(movieService.getAllMovies(pageable).map(movieMapper::toResponse));
     }
 
 
     @GetMapping(params = "name")
     public PageResponse<MovieResponse> searchMovies(@RequestParam String name,
                                                     @PageableDefault(sort = "id") Pageable pageable) {
-        return PageResponse.from(movieService.searchMovies(name, pageable).map(MovieResponse::from));
+        return PageResponse.from(movieService.searchMovies(name, pageable).map(movieMapper::toResponse));
+
     }
 
     @GetMapping("/{id}")
     public MovieResponse getMovieById(@PathVariable Long id) {
-        return MovieResponse.from(movieService.getMovieById(id));
+        return movieMapper.toResponse(movieService.getMovieById(id));
     }
 }

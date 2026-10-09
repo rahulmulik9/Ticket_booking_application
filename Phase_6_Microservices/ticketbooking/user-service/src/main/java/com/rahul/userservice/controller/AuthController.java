@@ -6,6 +6,7 @@ import com.rahul.userservice.dto.RefreshTokenRequest;
 import com.rahul.userservice.dto.RegisterRequest;
 import com.rahul.userservice.dto.UserResponse;
 import com.rahul.userservice.service.AuthService;
+import com.rahul.userservice.mapper.UserMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -24,12 +25,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final UserMapper userMapper;
 
     @Operation(summary = "Create an account (role is always USER)")
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
     public UserResponse register(@Valid @RequestBody RegisterRequest request) {
-        return UserResponse.from(authService.register(request));
+        return userMapper.toResponse(authService.register(request));
     }
 
     @Operation(summary = "Log in and get an access token and a refresh token")

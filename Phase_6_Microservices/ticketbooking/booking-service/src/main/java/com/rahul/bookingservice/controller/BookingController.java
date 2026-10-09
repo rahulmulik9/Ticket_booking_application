@@ -2,6 +2,7 @@ package com.rahul.bookingservice.controller;
 
 import com.rahul.bookingservice.dto.BookingRequest;
 import com.rahul.bookingservice.dto.BookingResponse;
+import com.rahul.bookingservice.mapper.BookingMapper;
 import com.rahul.bookingservice.service.BookingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -29,6 +30,7 @@ import java.util.List;
 public class BookingController {
 
     private final BookingService bookingService;
+    private final BookingMapper bookingMapper;
 
     @Operation(summary = "Book seats for a show")
     @ApiResponses({
@@ -39,28 +41,25 @@ public class BookingController {
     })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BookingResponse createBooking(@AuthenticationPrincipal Long userId,
-                                         @Valid @RequestBody BookingRequest request) {
-        return BookingResponse.from(bookingService.createBooking(userId, request));
+    public BookingResponse createBooking(@AuthenticationPrincipal Long userId, @Valid @RequestBody BookingRequest request) {
+        return bookingMapper.toResponse(bookingService.createBooking(userId, request));
     }
 
     @Operation(summary = "List my bookings, newest first")
     @GetMapping
     public List<BookingResponse> getMyBookings(@AuthenticationPrincipal Long userId) {
-        return bookingService.getMyBookings(userId).stream()
-                .map(BookingResponse::from)
-                .toList();
+        return bookingService.getMyBookings(userId).stream().map(bookingMapper::toResponse).toList();
     }
 
     @Operation(summary = "Get one of my bookings")
     @GetMapping("/{id}")
     public BookingResponse getBooking(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
-        return BookingResponse.from(bookingService.getBooking(userId, id));
+        return bookingMapper.toResponse(bookingService.getBooking(userId, id));
     }
 
     @Operation(summary = "Cancel one of my bookings and free its seats")
     @PostMapping("/{id}/cancel")
     public BookingResponse cancelBooking(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
-        return BookingResponse.from(bookingService.cancelBooking(userId, id));
+        return bookingMapper.toResponse(bookingService.cancelBooking(userId, id));
     }
 }

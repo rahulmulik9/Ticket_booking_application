@@ -2,6 +2,7 @@ package com.rahul.cinemaservice.controller;
 
 import com.rahul.cinemaservice.dto.InternalShowResponse;
 import com.rahul.cinemaservice.dto.SeatActionRequest;
+import com.rahul.cinemaservice.mapper.ShowMapper;
 import com.rahul.cinemaservice.service.SeatService;
 import com.rahul.cinemaservice.service.ShowService;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -18,7 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 // Only other services call these. The Gateway has no route for /internal/**,
 // and InternalApiKeyFilter rejects any call without the shared key.
-// @Hidden keeps them out of Swagger, which is for outside callers.
 @Hidden
 @RestController
 @RequestMapping("/internal/shows")
@@ -27,10 +27,11 @@ public class InternalShowController {
 
     private final ShowService showService;
     private final SeatService seatService;
+    private final ShowMapper showMapper;
 
     @GetMapping("/{showId}")
     public InternalShowResponse getShow(@PathVariable Long showId) {
-        return InternalShowResponse.fromEntity(showService.getShowById(showId));
+        return showMapper.toInternalResponse(showService.getShowById(showId));
     }
 
     @PostMapping("/{showId}/seats/reserve")

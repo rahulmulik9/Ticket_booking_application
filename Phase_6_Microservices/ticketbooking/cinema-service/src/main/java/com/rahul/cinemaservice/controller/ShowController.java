@@ -2,6 +2,7 @@ package com.rahul.cinemaservice.controller;
 
 import com.rahul.cinemaservice.dto.CreateShowRequest;
 import com.rahul.cinemaservice.dto.ShowResponse;
+import com.rahul.cinemaservice.mapper.ShowMapper;
 import com.rahul.cinemaservice.service.ShowService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -24,22 +25,22 @@ import java.util.List;
 public class ShowController {
 
     private final ShowService showService;
+    private final ShowMapper showMapper;
 
     @PostMapping("/shows")
     @ResponseStatus(HttpStatus.CREATED)
     public ShowResponse createShow(@Valid @RequestBody CreateShowRequest request) {
-        return ShowResponse.from(showService.createShow(request));
+        return showMapper.toResponse(showService.createShow(request));
     }
 
     @GetMapping("/movies/{movieId}/shows")
     public List<ShowResponse> getShowsByMovie(@PathVariable Long movieId) {
-        return showService.getShowsByMovie(movieId).stream()
-                .map(ShowResponse::from)
-                .toList();
+        return showService.getShowsByMovie(movieId).stream().map(showMapper::toResponse).toList();
+
     }
 
     @GetMapping("/shows/{id}")
     public ShowResponse getShowById(@PathVariable Long id) {
-        return ShowResponse.from(showService.getShowById(id));
+        return showMapper.toResponse(showService.getShowById(id));
     }
 }

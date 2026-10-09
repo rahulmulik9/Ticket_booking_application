@@ -1,6 +1,7 @@
 package com.rahul.cinemaservice.controller;
 
 import com.rahul.cinemaservice.dto.SeatResponse;
+import com.rahul.cinemaservice.mapper.SeatMapper;
 import com.rahul.cinemaservice.service.SeatService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -18,11 +19,10 @@ import java.util.List;
 public class SeatController {
 
     private final SeatService seatService;
+    private final SeatMapper seatMapper;
 
     @GetMapping("/shows/{showId}/seats")
     public List<SeatResponse> getSeatsByShow(@PathVariable Long showId) {
-        return seatService.getSeatsByShow(showId).stream()
-                .map(SeatResponse::from)
-                .toList();
+        return seatService.getSeatsByShow(showId).stream().map(seatMapper::toResponse).toList();
     }
 }

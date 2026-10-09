@@ -37,7 +37,9 @@ public class BookingController {
             @ApiResponse(responseCode = "201", description = "Booking confirmed"),
             @ApiResponse(responseCode = "404", description = "Show or seat not found"),
             @ApiResponse(responseCode = "409", description = "A seat is already booked"),
-            @ApiResponse(responseCode = "503", description = "Cinema service is unavailable")
+            @ApiResponse(responseCode = "503", description = "Cinema service is unavailable"),
+            @ApiResponse(responseCode = "402", description = "Payment was declined"),
+            @ApiResponse(responseCode = "503", description = "Cinema or Payment service is unavailable")
     })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

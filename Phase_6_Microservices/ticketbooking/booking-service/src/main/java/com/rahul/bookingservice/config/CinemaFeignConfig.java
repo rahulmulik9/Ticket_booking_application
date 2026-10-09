@@ -6,10 +6,11 @@ import feign.RequestInterceptor;
 import feign.codec.ErrorDecoder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
-@Configuration
-public class FeignConfig {
+// Used only by CinemaClient. It is NOT annotated @Configuration on purpose:
+// a @Configuration class would apply to every Feign client, and the Payment client
+// would then get Cinema's internal key and Cinema's 404 and 409 meanings.
+public class CinemaFeignConfig {
 
     // Every call to Cinema carries the shared internal key. Cinema's /internal/** accepts nothing else.
     @Bean

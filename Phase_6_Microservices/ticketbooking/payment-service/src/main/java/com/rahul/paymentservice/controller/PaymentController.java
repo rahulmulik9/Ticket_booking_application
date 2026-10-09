@@ -2,6 +2,7 @@ package com.rahul.paymentservice.controller;
 
 import com.rahul.paymentservice.dto.CreatePaymentRequest;
 import com.rahul.paymentservice.dto.PaymentResponse;
+import com.rahul.paymentservice.mapper.PaymentMapper;
 import com.rahul.paymentservice.service.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final PaymentMapper paymentMapper;
 
     @Operation(summary = "Pay for a booking")
     @ApiResponses({
@@ -35,7 +37,7 @@ public class PaymentController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public PaymentResponse createPayment(@Valid @RequestBody CreatePaymentRequest request) {
-        return PaymentResponse.from(paymentService.createPayment(request));
+        return paymentMapper.toResponse(paymentService.createPayment(request));
     }
 
     @Operation(summary = "Get a payment by id")
@@ -45,6 +47,6 @@ public class PaymentController {
     })
     @GetMapping("/{id}")
     public PaymentResponse getPaymentById(@PathVariable Long id) {
-        return PaymentResponse.from(paymentService.getPaymentById(id));
+        return paymentMapper.toResponse(paymentService.getPaymentById(id));
     }
 }

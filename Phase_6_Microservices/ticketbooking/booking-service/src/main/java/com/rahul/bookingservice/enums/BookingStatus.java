@@ -1,7 +1,8 @@
 package com.rahul.bookingservice.enums;
 
 public enum BookingStatus {
-    CONFIRMED,
-    CANCELLED
-    // CREATED and PAYMENT_FAILED are added in Phase 7
+    CREATED,          // seats held, waiting for payment
+    CONFIRMED,        // paid
+    CANCELLED,
+    PAYMENT_FAILED    // payment declined or unreachable, seats were freed
 }

@@ -1,5 +1,6 @@
 package com.rahul.bookingservice.client;
 
+import com.rahul.bookingservice.config.CinemaFeignConfig;
 import com.rahul.bookingservice.dto.InternalShowResponse;
 import com.rahul.bookingservice.dto.SeatActionRequest;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -10,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 // name = the service's spring.application.name. Eureka turns it into a real address.
 // Feign writes the HTTP code for us from this interface.
-@FeignClient(name = "cinema-service")
+@FeignClient(name = "cinema-service", configuration = CinemaFeignConfig.class)
 public interface CinemaClient {
 
     @GetMapping("/internal/shows/{showId}")

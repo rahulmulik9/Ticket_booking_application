@@ -60,6 +60,18 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Something went wrong", request);
     }
 
+    // 402: Payment answered, and the answer was "declined"
+    @ExceptionHandler(PaymentFailedException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentFailed(PaymentFailedException ex, HttpServletRequest request) {
+        return build(HttpStatus.PAYMENT_REQUIRED, ex.getMessage(), request);
+    }
+
+    // 503: Payment is down or too slow
+    @ExceptionHandler(PaymentUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentDown(PaymentUnavailableException ex, HttpServletRequest request) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request);
+    }
+
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, HttpServletRequest request) {
         ErrorResponse body = new ErrorResponse(
                 status.value(),

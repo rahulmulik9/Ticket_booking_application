@@ -17,6 +17,7 @@ public class BookingMapper {
         response.setTotalAmount(booking.getTotalAmount());
         response.setStatus(booking.getStatus());
         response.setCreatedAt(booking.getCreatedAt());
+        response.setPaymentId(booking.getPaymentId());
         return response;
     }
 }

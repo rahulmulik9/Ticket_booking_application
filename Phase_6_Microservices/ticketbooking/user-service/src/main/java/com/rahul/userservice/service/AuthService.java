@@ -46,7 +46,6 @@ public class AuthService {
             log.info("Registered user {}", saved.getId());
             return saved;
         } catch (DataIntegrityViolationException ex) {
-            // two sign-ups with the same email at the same moment: the unique constraint wins
             throw new DuplicateResourceException("Email is already registered");
         }
     }

@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
-
+import java.util.Optional;
 // Only the database work lives here, in its own bean. BookingService calls it from outside,
 // so the @Transactional proxy always works (the self-invocation lesson from Phase 2).
 // The Cinema and Payment calls stay outside every transaction, so a database connection
@@ -24,17 +24,40 @@ public class BookingTransactionService {
     private final BookingRepository bookingRepository;
 
     @Transactional(rollbackFor = Exception.class)
-    public Booking saveBooking(Long userId, Long showId, List<Long> seatIds, BigDecimal totalAmount) {
+    public Booking savePending(Long userId, Long showId, List<Long> seatIds) {
         Booking booking = new Booking();
         booking.setUserId(userId);
         booking.setShowId(showId);
-        booking.setTotalAmount(totalAmount);
-        booking.setStatus(BookingStatus.CREATED);   // seats are held, payment comes next
+        booking.setStatus(BookingStatus.PENDING);   // no seats held and no total yet
         seatIds.forEach(booking::addSeat);
-
-        return bookingRepository.save(booking);   // booking_seats are saved by the cascade
+        return bookingRepository.save(booking);
     }
 
+    // Only a PENDING booking can move on. A repeated message finds another status and is skipped.
+    @Transactional(rollbackFor = Exception.class)
+    public boolean markSeatsBooked(Long bookingId, BigDecimal totalAmount) {
+        Booking booking = findById(bookingId);
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            return false;
+        }
+        booking.setTotalAmount(totalAmount);
+        booking.setStatus(BookingStatus.CREATED);
+        return true;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Optional<Booking> markRejected(Long bookingId) {
+        Booking booking = findById(bookingId);
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            return Optional.empty();
+        }
+        booking.setStatus(BookingStatus.REJECTED);
+        return Optional.of(booking);
+    }
+
+
+
+    //old methods
     @Transactional(rollbackFor = Exception.class)
     public Booking markConfirmed(Long bookingId, Long paymentId) {
         Booking booking = findById(bookingId);

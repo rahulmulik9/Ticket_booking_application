@@ -3,3 +3,7 @@ spring:
     name: cinema-service
   config:
     import: "configserver:http://localhost:8888"
+
+logging:
+  level:
+    com.rahul.cinemaservice.kafka: DEBUG

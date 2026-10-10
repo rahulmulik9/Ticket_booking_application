@@ -1,5 +1,6 @@
-package com.rahul.bookingservice.kafka.event;
+package com.rahul.paymentservice.kafka.event;
 
+import com.rahul.bookingservice.kafka.event.BaseEvent;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -11,9 +12,8 @@ import java.math.BigDecimal;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class BookingConfirmed extends BaseEvent {
+public class PaymentCompletedEvent extends BaseEvent {
     private Long bookingId;
-    private Long userId;
     private Long paymentId;
-    private BigDecimal totalAmount;
+    private BigDecimal amount;
 }

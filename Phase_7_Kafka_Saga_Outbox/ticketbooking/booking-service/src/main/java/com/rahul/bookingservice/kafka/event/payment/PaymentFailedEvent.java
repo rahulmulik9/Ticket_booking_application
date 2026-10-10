@@ -1,5 +1,6 @@
-package com.rahul.paymentservice.kafka.event;
+package com.rahul.bookingservice.kafka.event.payment;
 
+import com.rahul.bookingservice.kafka.event.BaseEvent;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,7 +10,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class PaymentFailed extends BaseEvent {
+public class PaymentFailedEvent extends BaseEvent {
     private Long bookingId;
     private Long paymentId;
     private String reason;

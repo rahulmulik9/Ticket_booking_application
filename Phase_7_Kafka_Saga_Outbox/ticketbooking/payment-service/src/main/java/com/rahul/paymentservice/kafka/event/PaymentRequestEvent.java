@@ -1,6 +1,6 @@
 package com.rahul.paymentservice.kafka.event;
 
-import com.rahul.bookingservice.kafka.event.BaseEvent;
+import com.rahul.paymentservice.kafka.event.BaseEvent;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

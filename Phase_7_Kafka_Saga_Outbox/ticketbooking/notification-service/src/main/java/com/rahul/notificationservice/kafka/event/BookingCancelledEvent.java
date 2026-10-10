@@ -1,4 +1,4 @@
-package com.rahul.notificationservice.kafka.config.event;
+package com.rahul.notificationservice.kafka.event;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

@@ -1,9 +1,8 @@
-package com.rahul.bookingservice.kafka.publisher;
+package com.rahul.cinemaservice.kafka.publisher;
 
-import com.rahul.bookingservice.entity.Booking;
-import com.rahul.bookingservice.kafka.config.KafkaTopicConfig;
-import com.rahul.bookingservice.kafka.event.cinema.SeatReservationEvent;
-import com.rahul.bookingservice.kafka.event.notification.BookingFailedEvent;
+import com.rahul.cinemaservice.kafka.config.KafkaTopicConfig;
+import com.rahul.cinemaservice.kafka.event.SeatBookedEvent;
+import com.rahul.cinemaservice.kafka.event.SeatBookingFailedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -12,23 +11,22 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class BookingEventPublisher {
+public class CinemaEventPublisher {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    public void publishSeatReservation(Booking booking) {
-        send(booking.getId(), new SeatReservationEvent(booking.getId(), booking.getShowId(), booking.seatIds()));
+    public void publishSeatBooked(SeatBookedEvent event) {
+        send(event.getBookingId(), event);
     }
 
-    public void publishBookingFailed(Booking booking, String reason) {
-        send(booking.getId(), new BookingFailedEvent(booking.getId(), booking.getUserId(), reason));
+    public void publishSeatBookingFailed(SeatBookingFailedEvent event) {
+        send(event.getBookingId(), event);
     }
 
     private void send(Long bookingId, Object event) {
         String name = event.getClass().getSimpleName();
         try {
-            // key = booking id, so all events of one booking stay in order inside one partition
-            kafkaTemplate.send(KafkaTopicConfig.BOOKING_EVENTS, String.valueOf(bookingId), event)
+            kafkaTemplate.send(KafkaTopicConfig.CINEMA_EVENTS, String.valueOf(bookingId), event)
                     .whenComplete((result, ex) -> {
                         if (ex != null) {
                             log.error("Could not publish {} for booking {}", name, bookingId, ex);
@@ -38,7 +36,6 @@ public class BookingEventPublisher {
                         }
                     });
         } catch (RuntimeException ex) {
-            // Still not safe: a failed publish is lost. Step 6 shows it, Step 7 fixes it.
             log.error("Could not publish {} for booking {}", name, bookingId, ex);
         }
     }

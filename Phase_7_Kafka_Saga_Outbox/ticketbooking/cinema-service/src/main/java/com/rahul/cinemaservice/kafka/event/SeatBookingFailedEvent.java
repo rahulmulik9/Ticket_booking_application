@@ -1,6 +1,6 @@
 package com.rahul.cinemaservice.kafka.event;
 
-import com.rahul.bookingservice.kafka.event.BaseEvent;
+import com.rahul.cinemaservice.kafka.event.BaseEvent;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

@@ -39,7 +39,7 @@ public class Booking {
     @Column(nullable = false)
     private Long userId;
 
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Column(precision = 10, scale = 2)   // null while the booking is PENDING
     private BigDecimal totalAmount;
 
     @Enumerated(EnumType.STRING)

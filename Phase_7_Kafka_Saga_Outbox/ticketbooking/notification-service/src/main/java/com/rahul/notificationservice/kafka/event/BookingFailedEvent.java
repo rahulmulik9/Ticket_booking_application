@@ -1,6 +1,6 @@
-package com.rahul.notificationservice.kafka.config.event;
+package com.rahul.notificationservice.kafka.event;
 
-import com.rahul.bookingservice.kafka.event.BaseEvent;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

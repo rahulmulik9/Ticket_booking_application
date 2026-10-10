@@ -2,8 +2,9 @@ CREATE TABLE bookings (
     id           BIGSERIAL PRIMARY KEY,
     show_id      BIGINT         NOT NULL,   -- plain id, the show lives in cinema-service
     user_id      BIGINT         NOT NULL,   -- plain id, the user lives in user-service
+    payment_id   BIGINT,                    -- plain id, the payment lives in payment-service. Null until paid.
     total_amount NUMERIC(10, 2) NOT NULL,
-    status       VARCHAR(20)    NOT NULL,
+    status       VARCHAR(20)    NOT NULL,   -- CREATED, CONFIRMED, CANCELLED or PAYMENT_FAILED
     created_at   TIMESTAMP      NOT NULL
 );
 

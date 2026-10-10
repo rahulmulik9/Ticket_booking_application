@@ -1,6 +1,6 @@
-# Entity Diagram (Phase 6: Microservices)
+# Entity Diagram (Phase 6: Microservices, with Payment connected)
 
-Four databases, one per service. Ten tables in total.
+Four databases, one for each service that stores data. Eight tables in total.
 
 | Service | Database | Tables |
 |---|---|---|
@@ -31,7 +31,8 @@ erDiagram
     USER ||..o{ BOOKING : "user_id (plain id)"
     SHOW ||..o{ BOOKING : "show_id (plain id)"
     SEAT ||..o{ BOOKING_SEAT : "seat_id (plain id)"
-    BOOKING ||..o{ PAYMENT : "booking_id (plain id)"
+    BOOKING ||..o{ PAYMENT : "payments.booking_id (plain id)"
+    PAYMENT |o..o| BOOKING : "bookings.payment_id (plain id)"
 
     USER {
         bigint id PK
@@ -75,8 +76,9 @@ erDiagram
         bigint id PK
         bigint show_id "plain id, no FK"
         bigint user_id "plain id, no FK"
+        bigint payment_id "plain id, no FK, null until paid"
         numeric total_amount
-        varchar status "CONFIRMED or CANCELLED"
+        varchar status "CREATED, CONFIRMED, CANCELLED or PAYMENT_FAILED"
         timestamp created_at
     }
 
@@ -112,6 +114,7 @@ payment-service (paymentdb)
 Across services (plain ids only, no foreign keys):
   BOOKING.user_id         ····> USER.id          (user-service)
   BOOKING.show_id         ····> SHOW.id          (cinema-service)
+  BOOKING.payment_id      ····> PAYMENT.id       (payment-service)
   BOOKING_SEAT.seat_id    ····> SEAT.id          (cinema-service)
   PAYMENT.booking_id      ····> BOOKING.id       (booking-service)
 ```
@@ -131,21 +134,43 @@ Read `A ····> B` as: A stores B's id, but the database does not enforce it.
 | Show | Booking | one to many | `bookings.show_id` | plain id (was a foreign key) |
 | Seat | BookingSeat | one to many | `booking_seats.seat_id` | plain id (was a foreign key) |
 | Booking | Payment | one to many | `payments.booking_id` | plain id (new) |
+| Payment | Booking | zero or one to one | `bookings.payment_id` | plain id (new) |
 | Booking | Seat | many to many (through BookingSeat) | none | plain id |
 
-## What changed from Phase 1 to 5
+## Booking status
+
+```mermaid
+stateDiagram-v2
+    [*] --> CREATED: seats held, booking saved
+    CREATED --> CONFIRMED: payment SUCCESS
+    CREATED --> PAYMENT_FAILED: payment declined or Payment down
+    CONFIRMED --> CANCELLED: user cancels
+    CANCELLED --> [*]
+    PAYMENT_FAILED --> [*]
+```
+
+Rules that go with it:
+- The seats are BOOKED in Cinema while a booking is CREATED or CONFIRMED.
+- The seats are freed when a booking becomes PAYMENT_FAILED or CANCELLED.
+- Only a CONFIRMED booking can be cancelled. For the other statuses the seats were already freed, and freeing them again could free seats that someone else has booked since.
+- `payment_id` is filled only when the booking becomes CONFIRMED.
+
+## What changed from the monolith
 
 - Three foreign keys were removed: `bookings.show_id`, `bookings.user_id` and `booking_seats.seat_id`. Their columns stay, but the database no longer checks them.
 - In Java, `Booking.show` becomes `Long showId`, and `BookingSeat.seat` becomes `Long seatId`.
 - One new table, `payments`, in its own database.
+- Payment is now part of the booking flow:
+    - `bookings` gets `payment_id`, a plain id with no foreign key.
+    - `bookings.status` gets two new values, CREATED and PAYMENT_FAILED.
 - `seats` gains `version` (Phase 4, optimistic locking), and `users` and `refresh_tokens` (Phase 5) are now part of the diagram.
 
 ## What we lose without foreign keys
 
-- The database no longer stops a booking from pointing to a show that does not exist.
-- So Booking must call Cinema to check the show before it saves anything.
-- Deleting a show or user would not warn the booking tables, so we never delete them (the plan already leaves delete for later).
-- You cannot join `bookings` with `shows` in one SQL query. To show "booking with movie title", Booking asks Cinema through its API.
+- The database no longer stops a booking from pointing to a show or a payment that does not exist.
+- So Booking calls Cinema to check the show before it saves anything, and it only stores a payment id that Payment itself returned.
+- Deleting a show, user or payment would not warn the booking tables, so we never delete them (the plan already leaves delete for later).
+- You cannot join `bookings` with `shows` or `payments` in one SQL query. To show "booking with movie title", Booking asks Cinema through its API.
 
 ## Each entity in simple statements
 
@@ -174,6 +199,8 @@ Read `A ····> B` as: A stores B's id, but the database does not enforce it.
 **Booking** (booking-service)
 - One booking is for one show and one user, stored as plain ids.
 - One booking contains many seats, through `booking_seats`.
+- It starts as CREATED (seats held, waiting for payment) and becomes CONFIRMED when Payment answers SUCCESS.
+- It stores the payment's id once paid. Everything else about the payment stays in Payment.
 - To know the movie title or price, Booking asks Cinema.
 
 **BookingSeat** (booking-service)
@@ -183,11 +210,14 @@ Read `A ····> B` as: A stores B's id, but the database does not enforce it.
 
 **Payment** (payment-service)
 - One payment is for one booking, stored as a plain id.
-- A booking can have many payment rows over time, for example a failed try and a later success.
+- In the current flow Booking makes one payment attempt per booking. The model allows more, for example a retry or a refund in Phase 7.
+- Payment does not know the booking's status. Booking decides what a SUCCESS or FAILED answer means.
 
 ## One example in words
 
 "Inception" (Movie, in cinema-service) has a 7 PM show with seats A1, A2, A3. Rahul (User, in user-service) books A1 and A2.
-Booking asks Cinema for the show's price and to reserve seats A1 and A2. Then Booking saves one Booking row in its own database, holding `show_id` and `user_id` as plain numbers, and two BookingSeat rows holding the seat ids.
-Later, Payment saves one Payment row holding the booking's id as a plain number.
+Booking asks Cinema for the show's price and to reserve seats A1 and A2. Then Booking saves one Booking row in its own database, with status CREATED, holding `show_id` and `user_id` as plain numbers, and two BookingSeat rows holding the seat ids.
+Booking then asks Payment to charge the total. Payment saves one Payment row holding the booking's id as a plain number, and answers SUCCESS.
+Booking sets its row to CONFIRMED and stores the payment's id in `payment_id`.
+If Payment had answered FAILED, Booking would set the row to PAYMENT_FAILED and ask Cinema to free A1 and A2.
 No database holds a foreign key to another service's tables. The services are linked only through API calls.

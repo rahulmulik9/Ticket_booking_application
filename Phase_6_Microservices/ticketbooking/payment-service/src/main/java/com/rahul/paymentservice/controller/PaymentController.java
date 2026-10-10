@@ -27,7 +27,6 @@ public class PaymentController {
 
     private final PaymentService paymentService;
     private final PaymentMapper paymentMapper;
-    private final PaymentMapper paymentMapper;
 
     @Operation(summary = "Pay for a booking")
     @ApiResponses({

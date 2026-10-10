@@ -55,7 +55,7 @@ public class BookingService {
             throw ex;
         }
 
-        // 4. pay. A decline or an outage ends here: the booking becomes PAYMENT_FAILED and the seats are freed.
+        // 4. pay. A decline or an outage ends here:  the booking becomes PAYMENT_FAILED and the seats are freed.
         PaymentResponse payment = pay(booking.getId(), total, show.getId(), seatIds);
 
         // 5. paid, so confirm

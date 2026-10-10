@@ -3,3 +3,7 @@ spring:
     name: booking-service
   config:
     import: "configserver:http://localhost:8888"
+
+logging:
+  level:
+    com.rahul.bookingservice.kafka: DEBUG

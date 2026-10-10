@@ -4,7 +4,14 @@
   <component name="MavenProjectsManager">
     <option name="originalFiles">
       <list>
-        <option value="$PROJECT_DIR$/Phase_5_JWT/ticketbooking/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/api-gateway/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/booking-service/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/cinema-service/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/user-service/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/payment-service/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/notification-service/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/eureka-server/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/config-server/pom.xml" />
       </list>
     </option>
   </component>

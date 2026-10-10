@@ -1,0 +1,74 @@
+services:
+  user-db:
+    image: postgres:18
+    container_name: user-postgres
+    environment:
+      POSTGRES_DB: userdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - user-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d userdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  cinema-db:
+    image: postgres:18
+    container_name: cinema-postgres
+    environment:
+      POSTGRES_DB: cinemadb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - cinema-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cinemadb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  booking-db:
+    image: postgres:18
+    container_name: booking-postgres
+    environment:
+      POSTGRES_DB: bookingdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - booking-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bookingdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  payment-db:
+    image: postgres:18
+    container_name: payment-postgres
+    environment:
+      POSTGRES_DB: paymentdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5436:5432"
+    volumes:
+      - payment-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d paymentdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  user-pgdata:
+  cinema-pgdata:
+  booking-pgdata:
+  payment-pgdata:

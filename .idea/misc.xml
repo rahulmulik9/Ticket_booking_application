@@ -4,14 +4,14 @@
   <component name="MavenProjectsManager">
     <option name="originalFiles">
       <list>
-        <option value="$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/api-gateway/pom.xml" />
-        <option value="$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/booking-service/pom.xml" />
-        <option value="$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/cinema-service/pom.xml" />
-        <option value="$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/user-service/pom.xml" />
-        <option value="$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/payment-service/pom.xml" />
-        <option value="$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/notification-service/pom.xml" />
-        <option value="$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/eureka-server/pom.xml" />
-        <option value="$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/config-server/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_7_Kafka_Saga_Outbox/ticketbooking/user-service/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_7_Kafka_Saga_Outbox/ticketbooking/payment-service/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_7_Kafka_Saga_Outbox/ticketbooking/notification-service/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_7_Kafka_Saga_Outbox/ticketbooking/eureka-server/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_7_Kafka_Saga_Outbox/ticketbooking/config-server/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_7_Kafka_Saga_Outbox/ticketbooking/cinema-service/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_7_Kafka_Saga_Outbox/ticketbooking/booking-service/pom.xml" />
+        <option value="$PROJECT_DIR$/Phase_7_Kafka_Saga_Outbox/ticketbooking/api-gateway/pom.xml" />
       </list>
     </option>
   </component>

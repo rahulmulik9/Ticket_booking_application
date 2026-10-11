@@ -4,7 +4,6 @@ import com.rahul.bookingservice.kafka.event.payment.PaymentCompletedEvent;
 import com.rahul.bookingservice.kafka.event.payment.PaymentFailedEvent;
 import com.rahul.bookingservice.kafka.event.payment.RefundCompletedEvent;
 import com.rahul.bookingservice.kafka.event.payment.RefundFailedEvent;
-import com.rahul.bookingservice.kafka.publisher.BookingEventPublisher;
 import com.rahul.bookingservice.service.BookingTransactionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,27 +18,17 @@ import org.springframework.stereotype.Component;
 public class PaymentEventListener {
 
     private final BookingTransactionService bookingTransactionService;
-    private final BookingEventPublisher bookingEventPublisher;
 
     @KafkaHandler
     public void onPaymentCompleted(PaymentCompletedEvent event) {
-        bookingTransactionService.markConfirmed(event.getBookingId(), event.getPaymentId()).ifPresentOrElse(
-                booking -> {
-                    log.info("Booking {} confirmed with payment {}", booking.getId(), event.getPaymentId());
-                    bookingEventPublisher.publishBookingCompleted(booking);
-                },
-                () -> log.info("Booking {} is no longer CREATED, confirmation skipped", event.getBookingId()));
+        boolean updated = bookingTransactionService.markConfirmed(event.getBookingId(), event.getPaymentId());
+        log.info("Booking {} confirmed with payment {}, updated: {}", event.getBookingId(), event.getPaymentId(), updated);
     }
 
     @KafkaHandler
     public void onPaymentFailed(PaymentFailedEvent event) {
-        bookingTransactionService.markPaymentFailed(event.getBookingId()).ifPresentOrElse(
-                booking -> {
-                    log.info("Payment failed for booking {}: {}", booking.getId(), event.getReason());
-                    bookingEventPublisher.publishSeatRelease(booking, "PAYMENT_FAILED");   // undo: free the seats
-                    bookingEventPublisher.publishBookingFailed(booking, event.getReason());   // tell the user
-                },
-                () -> log.info("Booking {} is no longer CREATED, payment failure skipped", event.getBookingId()));
+        boolean updated = bookingTransactionService.markPaymentFailed(event.getBookingId(), event.getReason());
+        log.info("Payment failed for booking {}: {}, updated: {}", event.getBookingId(), event.getReason(), updated);
     }
 
     @KafkaHandler
@@ -54,8 +43,9 @@ public class PaymentEventListener {
                 event.getBookingId(), event.getPaymentId(), event.getReason(), event.getPaymentId());
     }
 
+    // Safety net for any event type that has no handler.
     @KafkaHandler(isDefault = true)
     public void onNotHandledYet(Object event) {
-        log.warn("No handler yet for {}", event.getClass().getSimpleName());
+        log.warn("No handler for {}", event.getClass().getSimpleName());
     }
 }

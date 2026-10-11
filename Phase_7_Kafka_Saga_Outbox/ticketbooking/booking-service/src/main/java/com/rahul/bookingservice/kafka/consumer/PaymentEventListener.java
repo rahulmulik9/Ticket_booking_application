@@ -2,6 +2,8 @@ package com.rahul.bookingservice.kafka.consumer;
 
 import com.rahul.bookingservice.kafka.event.payment.PaymentCompletedEvent;
 import com.rahul.bookingservice.kafka.event.payment.PaymentFailedEvent;
+import com.rahul.bookingservice.kafka.event.payment.RefundCompletedEvent;
+import com.rahul.bookingservice.kafka.event.payment.RefundFailedEvent;
 import com.rahul.bookingservice.kafka.publisher.BookingEventPublisher;
 import com.rahul.bookingservice.service.BookingTransactionService;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,17 @@ public class PaymentEventListener {
                 () -> log.info("Booking {} is no longer CREATED, payment failure skipped", event.getBookingId()));
     }
 
+    @KafkaHandler
+    public void onRefundCompleted(RefundCompletedEvent event) {
+        log.info("Refund {} of payment {} completed for booking {}, amount {}",
+                event.getRefundId(), event.getPaymentId(), event.getBookingId(), event.getAmount());
+    }
+
+    @KafkaHandler
+    public void onRefundFailed(RefundFailedEvent event) {
+        log.error("Refund failed for booking {}, payment {}: {}. Retry with POST /api/v1/payments/{}/refund",
+                event.getBookingId(), event.getPaymentId(), event.getReason(), event.getPaymentId());
+    }
 
     @KafkaHandler(isDefault = true)
     public void onNotHandledYet(Object event) {

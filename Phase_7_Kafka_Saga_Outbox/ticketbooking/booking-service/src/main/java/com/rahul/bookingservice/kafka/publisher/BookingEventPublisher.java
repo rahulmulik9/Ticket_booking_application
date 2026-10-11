@@ -4,9 +4,11 @@ import com.rahul.bookingservice.entity.Booking;
 import com.rahul.bookingservice.kafka.config.KafkaTopicConfig;
 import com.rahul.bookingservice.kafka.event.cinema.SeatReleaseEvent;
 import com.rahul.bookingservice.kafka.event.cinema.SeatReservationEvent;
+import com.rahul.bookingservice.kafka.event.notification.BookingCancelledEvent;
 import com.rahul.bookingservice.kafka.event.notification.BookingCompletedEvent;
 import com.rahul.bookingservice.kafka.event.notification.BookingFailedEvent;
 import com.rahul.bookingservice.kafka.event.payment.PaymentRequestEvent;
+import com.rahul.bookingservice.kafka.event.payment.RefundRequestEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -39,6 +41,14 @@ public class BookingEventPublisher {
 
     public void publishSeatRelease(Booking booking, String reason) {
         send(booking.getId(), new SeatReleaseEvent(booking.getId(), booking.getShowId(), booking.seatIds(), reason));
+    }
+
+    public void publishRefundRequest(Booking booking) {
+        send(booking.getId(), new RefundRequestEvent(booking.getId(), booking.getPaymentId(), booking.getTotalAmount()));
+    }
+
+    public void publishBookingCancelled(Booking booking) {
+        send(booking.getId(), new BookingCancelledEvent(booking.getId(), booking.getUserId()));
     }
 
     private void send(Long bookingId, Object event) {

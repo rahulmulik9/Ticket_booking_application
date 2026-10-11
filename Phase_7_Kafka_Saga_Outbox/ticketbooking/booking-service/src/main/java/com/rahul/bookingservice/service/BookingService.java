@@ -1,8 +1,6 @@
 package com.rahul.bookingservice.service;
 
-import com.rahul.bookingservice.client.CinemaClient;
 import com.rahul.bookingservice.dto.BookingRequest;
-import com.rahul.bookingservice.dto.SeatActionRequest;
 import com.rahul.bookingservice.entity.Booking;
 import com.rahul.bookingservice.exception.ResourceNotFoundException;
 import com.rahul.bookingservice.kafka.publisher.BookingEventPublisher;
@@ -20,7 +18,6 @@ import java.util.List;
 @Slf4j
 public class BookingService {
 
-    private final CinemaClient cinemaClient;   // only used by cancel until Step 5
     private final BookingTransactionService bookingTransactionService;
     private final BookingRepository bookingRepository;
     private final BookingEventPublisher bookingEventPublisher;
@@ -45,19 +42,16 @@ public class BookingService {
         return bookingRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
-    // Unchanged for now. The refund and the event-based release come in Step 5.
+    // The cancel saga: the booking is CANCELLED at once, then three services react to their own event.
+    // Cinema frees the seats, Payment refunds the money, Notification tells the user.
     public Booking cancelBooking(Long userId, Long bookingId) {
         Booking booking = bookingTransactionService.cancelBooking(userId, bookingId);
-        releaseQuietly(booking.getShowId(), booking.seatIds());
+
+        bookingEventPublisher.publishSeatRelease(booking, "CANCELLED");
+        bookingEventPublisher.publishRefundRequest(booking);
+        bookingEventPublisher.publishBookingCancelled(booking);
+
         log.info("Booking {} cancelled by user {}", bookingId, userId);
         return booking;
-    }
-
-    private void releaseQuietly(Long showId, List<Long> seatIds) {
-        try {
-            cinemaClient.releaseSeats(showId, new SeatActionRequest(seatIds));
-        } catch (RuntimeException ex) {
-            log.error("Could not release seats {} of show {}. They stay BOOKED until fixed by hand.", seatIds, showId, ex);
-        }
     }
 }

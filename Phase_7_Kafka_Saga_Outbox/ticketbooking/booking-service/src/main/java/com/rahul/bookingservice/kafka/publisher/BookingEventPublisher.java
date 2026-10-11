@@ -10,63 +10,61 @@ import com.rahul.bookingservice.kafka.event.notification.BookingFailedEvent;
 import com.rahul.bookingservice.kafka.event.payment.PaymentRequestEvent;
 import com.rahul.bookingservice.kafka.event.payment.RefundRequestEvent;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 
+// These methods only write an outbox row. They must be called inside a transaction.
+// OutboxPublisher sends the rows to Kafka later.
 @Component
 @RequiredArgsConstructor
-@Slf4j
 public class BookingEventPublisher {
 
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    // the same tokens the consumers use in spring.json.type.mapping
+    private static final String SEAT_RESERVATION = "seatReservation";
+    private static final String SEAT_RELEASE = "seatRelease";
+    private static final String PAYMENT_REQUEST = "paymentRequest";
+    private static final String REFUND_REQUEST = "refundRequest";
+    private static final String BOOKING_COMPLETED = "bookingCompleted";
+    private static final String BOOKING_FAILED = "bookingFailed";
+    private static final String BOOKING_CANCELLED = "bookingCancelled";
+
+    private final OutboxWriter outboxWriter;
 
     public void publishSeatReservation(Booking booking) {
-        send(booking.getId(), new SeatReservationEvent(booking.getId(), booking.getShowId(), booking.seatIds()));
-    }
-
-    public void publishBookingFailed(Booking booking, String reason) {
-        send(booking.getId(), new BookingFailedEvent(booking.getId(), booking.getUserId(), reason));
+        write(booking.getId(), SEAT_RESERVATION,
+                new SeatReservationEvent(booking.getId(), booking.getShowId(), booking.seatIds()));
     }
 
     public void publishPaymentRequest(Long bookingId, BigDecimal amount) {
-        send(bookingId, new PaymentRequestEvent(bookingId, amount));
-    }
-
-    public void publishBookingCompleted(Booking booking) {
-        send(booking.getId(), new BookingCompletedEvent(booking.getId(), booking.getUserId(), booking.getPaymentId(), booking.getTotalAmount()));
+        write(bookingId, PAYMENT_REQUEST, new PaymentRequestEvent(bookingId, amount));
     }
 
     public void publishSeatRelease(Booking booking, String reason) {
-        send(booking.getId(), new SeatReleaseEvent(booking.getId(), booking.getShowId(), booking.seatIds(), reason));
+        write(booking.getId(), SEAT_RELEASE,
+                new SeatReleaseEvent(booking.getId(), booking.getShowId(), booking.seatIds(), reason));
     }
 
     public void publishRefundRequest(Booking booking) {
-        send(booking.getId(), new RefundRequestEvent(booking.getId(), booking.getPaymentId(), booking.getTotalAmount()));
+        write(booking.getId(), REFUND_REQUEST,
+                new RefundRequestEvent(booking.getId(), booking.getPaymentId(), booking.getTotalAmount()));
+    }
+
+    public void publishBookingCompleted(Booking booking) {
+        write(booking.getId(), BOOKING_COMPLETED, new BookingCompletedEvent(
+                booking.getId(), booking.getUserId(), booking.getPaymentId(), booking.getTotalAmount()));
+    }
+
+    public void publishBookingFailed(Booking booking, String reason) {
+        write(booking.getId(), BOOKING_FAILED, new BookingFailedEvent(booking.getId(), booking.getUserId(), reason));
     }
 
     public void publishBookingCancelled(Booking booking) {
-        send(booking.getId(), new BookingCancelledEvent(booking.getId(), booking.getUserId()));
+        write(booking.getId(), BOOKING_CANCELLED, new BookingCancelledEvent(booking.getId(), booking.getUserId()));
     }
 
-    private void send(Long bookingId, Object event) {
-        String name = event.getClass().getSimpleName();
-        try {
-            // key = booking id, so all events of one booking stay in order inside one partition
-            kafkaTemplate.send(KafkaTopicConfig.BOOKING_EVENTS, String.valueOf(bookingId), event)
-                    .whenComplete((result, ex) -> {
-                        if (ex != null) {
-                            log.error("Could not publish {} for booking {}", name, bookingId, ex);
-                        } else {
-                            log.info("Published {} for booking {}, partition {}, offset {}", name, bookingId,
-                                    result.getRecordMetadata().partition(), result.getRecordMetadata().offset());
-                        }
-                    });
-        } catch (RuntimeException ex) {
-            // Still not safe: a failed publish is lost. Step 6 shows it, Step 7 fixes it.
-            log.error("Could not publish {} for booking {}", name, bookingId, ex);
-        }
+    private void write(Long bookingId, String eventType, Object event) {
+        // key = booking id, so all events of one booking stay in order inside one partition
+        outboxWriter.write(KafkaTopicConfig.BOOKING_EVENTS, String.valueOf(bookingId), eventType, event);
     }
 }

@@ -18,7 +18,7 @@ import java.math.BigDecimal;
 // OutboxPublisher sends the rows to Kafka later.
 @Component
 @RequiredArgsConstructor
-public class BookingEventPublisher {
+public class BookingEventRecorder {
 
     // the same tokens the consumers use in spring.json.type.mapping
     private static final String SEAT_RESERVATION = "seatReservation";
@@ -31,35 +31,35 @@ public class BookingEventPublisher {
 
     private final OutboxWriter outboxWriter;
 
-    public void publishSeatReservation(Booking booking) {
+    public void recordSeatReservation(Booking booking) {
         write(booking.getId(), SEAT_RESERVATION,
                 new SeatReservationEvent(booking.getId(), booking.getShowId(), booking.seatIds()));
     }
 
-    public void publishPaymentRequest(Long bookingId, BigDecimal amount) {
+    public void recordPaymentRequest(Long bookingId, BigDecimal amount) {
         write(bookingId, PAYMENT_REQUEST, new PaymentRequestEvent(bookingId, amount));
     }
 
-    public void publishSeatRelease(Booking booking, String reason) {
+    public void recordSeatRelease(Booking booking, String reason) {
         write(booking.getId(), SEAT_RELEASE,
                 new SeatReleaseEvent(booking.getId(), booking.getShowId(), booking.seatIds(), reason));
     }
 
-    public void publishRefundRequest(Booking booking) {
+    public void recordRefundRequest(Booking booking) {
         write(booking.getId(), REFUND_REQUEST,
                 new RefundRequestEvent(booking.getId(), booking.getPaymentId(), booking.getTotalAmount()));
     }
 
-    public void publishBookingCompleted(Booking booking) {
+    public void recordBookingCompleted(Booking booking) {
         write(booking.getId(), BOOKING_COMPLETED, new BookingCompletedEvent(
                 booking.getId(), booking.getUserId(), booking.getPaymentId(), booking.getTotalAmount()));
     }
 
-    public void publishBookingFailed(Booking booking, String reason) {
+    public void recordBookingFailed(Booking booking, String reason) {
         write(booking.getId(), BOOKING_FAILED, new BookingFailedEvent(booking.getId(), booking.getUserId(), reason));
     }
 
-    public void publishBookingCancelled(Booking booking) {
+    public void recordBookingCancelled(Booking booking) {
         write(booking.getId(), BOOKING_CANCELLED, new BookingCancelledEvent(booking.getId(), booking.getUserId()));
     }
 

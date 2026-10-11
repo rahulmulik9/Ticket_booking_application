@@ -46,6 +46,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Something went wrong", request);
     }
 
+    // 409: the payment is not in a state that allows a refund
+    @ExceptionHandler(RefundNotAllowedException.class)
+    public ResponseEntity<ErrorResponse> handleRefundNotAllowed(RefundNotAllowedException ex, HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, HttpServletRequest request) {
         ErrorResponse body = new ErrorResponse(
                 status.value(),

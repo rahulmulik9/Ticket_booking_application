@@ -4,13 +4,15 @@ import com.rahul.paymentservice.entity.Refund;
 import com.rahul.paymentservice.enums.RefundStatus;
 import com.rahul.paymentservice.exception.RefundNotAllowedException;
 import com.rahul.paymentservice.exception.ResourceNotFoundException;
+import com.rahul.paymentservice.gateway.GatewayResult;
 import com.rahul.paymentservice.kafka.event.RefundCompletedEvent;
 import com.rahul.paymentservice.kafka.event.RefundFailedEvent;
 import com.rahul.paymentservice.kafka.event.RefundRequestEvent;
-import com.rahul.paymentservice.kafka.publisher.PaymentEventPublisher;
+import com.rahul.paymentservice.kafka.publisher.PaymentEventRecorder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 @RequiredArgsConstructor
@@ -18,23 +20,29 @@ import org.springframework.stereotype.Service;
 public class RefundProcessingService {
 
     private final RefundService refundService;
-    private final PaymentEventPublisher paymentEventPublisher;
+    private final PaymentEventRecorder paymentEventRecorder;
+    private final TransactionTemplate transactionTemplate;
 
     public void process(RefundRequestEvent event) {
         try {
-            Refund refund = refundService.refund(event.getPaymentId());
+            Refund pending = refundService.startRefund(event.getPaymentId());   // commits
+            GatewayResult result = refundService.callGateway(pending);          // no transaction here
 
-            if (refund.getStatus() == RefundStatus.DONE) {
-                paymentEventPublisher.publishRefundCompleted(new RefundCompletedEvent(
-                        event.getBookingId(), event.getPaymentId(), refund.getId(), refund.getAmount()));
-            } else {
-                paymentEventPublisher.publishRefundFailed(new RefundFailedEvent(
-                        event.getBookingId(), event.getPaymentId(), refund.getId(), "Refund declined by the gateway"));
-            }
+            // one transaction: the refund, the payment status and the event row are saved together
+            transactionTemplate.executeWithoutResult(status -> {
+                Refund finished = refundService.finishRefund(pending, result);
+                if (finished.getStatus() == RefundStatus.DONE) {
+                    paymentEventRecorder.recordRefundCompleted(new RefundCompletedEvent(
+                            event.getBookingId(), event.getPaymentId(), finished.getId(), finished.getAmount()));
+                } else {
+                    paymentEventRecorder.recordRefundFailed(new RefundFailedEvent(
+                            event.getBookingId(), event.getPaymentId(), finished.getId(), "Refund declined by the gateway"));
+                }
+            });
         } catch (ResourceNotFoundException | RefundNotAllowedException ex) {
             log.warn("Refund for booking {} not possible: {}", event.getBookingId(), ex.getMessage());
-            paymentEventPublisher.publishRefundFailed(new RefundFailedEvent(
-                    event.getBookingId(), event.getPaymentId(), null, ex.getMessage()));
+            transactionTemplate.executeWithoutResult(status -> paymentEventRecorder.recordRefundFailed(
+                    new RefundFailedEvent(event.getBookingId(), event.getPaymentId(), null, ex.getMessage())));
         }
     }
 }

@@ -21,22 +21,25 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentGateway paymentGateway;
 
+    // Used by the REST endpoint. No events, same behaviour as before.
     public Payment createPayment(CreatePaymentRequest request) {
-        return charge(request.getBookingId(), request.getAmount());
+        Payment pending = createPending(request.getBookingId(), request.getAmount());
+        GatewayResult result = paymentGateway.charge(pending.getBookingId(), pending.getAmount());
+        return finish(pending, result);
     }
 
     // No @Transactional on purpose. Each save commits by itself, so the database
     // connection is not held while we wait for the gateway (a real gateway can be slow).
     // The PENDING row is saved first, so a crash during the call still leaves a record.
-    public Payment charge(Long bookingId, BigDecimal amount) {
+    public Payment createPending(Long bookingId, BigDecimal amount) {
         Payment payment = new Payment();
         payment.setBookingId(bookingId);
         payment.setAmount(amount);
         payment.setStatus(PaymentStatus.PENDING);
-        Payment pending = paymentRepository.save(payment);
+        return paymentRepository.save(payment);
+    }
 
-        GatewayResult result = paymentGateway.charge(pending.getBookingId(), pending.getAmount());
-
+    public Payment finish(Payment pending, GatewayResult result) {
         pending.setStatus(result.isSuccess() ? PaymentStatus.SUCCESS : PaymentStatus.FAILED);
         Payment finished = paymentRepository.save(pending);
 

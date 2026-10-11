@@ -23,11 +23,15 @@ public class RefundService {
     private final RefundRepository refundRepository;
     private final PaymentGateway paymentGateway;
 
-    // Used by the event listener and by the REST endpoint.
-    // A FAILED refund leaves the payment as SUCCESS, so it can be tried again.
+    // Used by the REST endpoint. No events, same behaviour as before.
     public Refund refund(Long paymentId) {
-        Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Payment not found with id " + paymentId));
+        Refund pending = startRefund(paymentId);
+        return finishRefund(pending, callGateway(pending));
+    }
+
+    // No @Transactional on purpose, like createPending. Each save commits by itself.
+    public Refund startRefund(Long paymentId) {
+        Payment payment = findPayment(paymentId);
 
         if (payment.getStatus() != PaymentStatus.SUCCESS) {
             throw new RefundNotAllowedException("Only a SUCCESS payment can be refunded, this one is " + payment.getStatus());
@@ -37,12 +41,19 @@ public class RefundService {
         refund.setPaymentId(payment.getId());
         refund.setAmount(payment.getAmount());
         refund.setStatus(RefundStatus.PENDING);
-        Refund pending = refundRepository.save(refund);
+        return refundRepository.save(refund);
+    }
 
-        GatewayResult result = paymentGateway.refund(payment.getBookingId(), payment.getAmount());
+    public GatewayResult callGateway(Refund pending) {
+        Payment payment = findPayment(pending.getPaymentId());
+        return paymentGateway.refund(payment.getBookingId(), pending.getAmount());
+    }
 
+    // A FAILED refund leaves the payment as SUCCESS, so it can be tried again.
+    public Refund finishRefund(Refund pending, GatewayResult result) {
         if (result.isSuccess()) {
             pending.setStatus(RefundStatus.DONE);
+            Payment payment = findPayment(pending.getPaymentId());
             payment.setStatus(PaymentStatus.REFUNDED);
             paymentRepository.save(payment);
         } else {
@@ -50,7 +61,12 @@ public class RefundService {
         }
         Refund finished = refundRepository.save(pending);
 
-        log.info("Refund {} of payment {} finished as {}", finished.getId(), paymentId, finished.getStatus());
+        log.info("Refund {} of payment {} finished as {}", finished.getId(), finished.getPaymentId(), finished.getStatus());
         return finished;
+    }
+
+    private Payment findPayment(Long paymentId) {
+        return paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment not found with id " + paymentId));
     }
 }

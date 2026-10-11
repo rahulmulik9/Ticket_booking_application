@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -19,13 +21,17 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentGateway paymentGateway;
 
+    public Payment createPayment(CreatePaymentRequest request) {
+        return charge(request.getBookingId(), request.getAmount());
+    }
+
     // No @Transactional on purpose. Each save commits by itself, so the database
     // connection is not held while we wait for the gateway (a real gateway can be slow).
     // The PENDING row is saved first, so a crash during the call still leaves a record.
-    public Payment createPayment(CreatePaymentRequest request) {
+    public Payment charge(Long bookingId, BigDecimal amount) {
         Payment payment = new Payment();
-        payment.setBookingId(request.getBookingId());
-        payment.setAmount(request.getAmount());
+        payment.setBookingId(bookingId);
+        payment.setAmount(amount);
         payment.setStatus(PaymentStatus.PENDING);
         Payment pending = paymentRepository.save(payment);
 

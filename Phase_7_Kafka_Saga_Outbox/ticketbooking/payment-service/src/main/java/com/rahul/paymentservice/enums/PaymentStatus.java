@@ -1,8 +1,8 @@
 package com.rahul.paymentservice.enums;
 
 public enum PaymentStatus {
-    PENDING,   // saved, gateway not answered yet
+    PENDING,    // saved, gateway not answered yet
     SUCCESS,
-    FAILED
-    // REFUNDED is added in Phase 7
+    FAILED,
+    REFUNDED    // the money went back after a cancel
 }

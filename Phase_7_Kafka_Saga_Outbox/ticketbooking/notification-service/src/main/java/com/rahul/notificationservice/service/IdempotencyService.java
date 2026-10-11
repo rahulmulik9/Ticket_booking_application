@@ -22,7 +22,7 @@ public class IdempotencyService {
     }
 
     // true = first time, false = already processed.
-    // MANDATORY: the claim must commit or roll back together with the work.
+    // MANDATORY: claims said : I must be called inside a transaction that someone else already started. I won’t start my own
     @Transactional(propagation = Propagation.MANDATORY)
     public boolean claim(String eventId) {
         return processedMessageRepository.insertIfAbsent(eventId) == 1;
@@ -30,6 +30,7 @@ public class IdempotencyService {
 
     // Claim and work in one transaction. If the work throws, the claim rolls back too,
     // so the Kafka retry runs the work again.
+    //TransactionTemplate is Spring’s way of running a block of code inside a transaction manually, without @Transactional.
     public void runOnce(String eventId, Runnable work) {
         boolean ran = Boolean.TRUE.equals(transactionTemplate.execute(status -> {
             if (!claim(eventId)) {

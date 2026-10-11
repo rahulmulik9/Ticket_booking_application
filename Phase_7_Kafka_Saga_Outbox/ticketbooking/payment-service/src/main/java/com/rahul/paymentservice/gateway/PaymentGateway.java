@@ -7,4 +7,6 @@ import java.math.BigDecimal;
 public interface PaymentGateway {
 
     GatewayResult charge(Long bookingId, BigDecimal amount);
+
+    GatewayResult refund(Long bookingId, BigDecimal amount);
 }

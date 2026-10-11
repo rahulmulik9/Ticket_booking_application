@@ -6,6 +6,7 @@ import com.rahul.paymentservice.security.RestAuthenticationEntryPoint;
 import com.rahul.paymentservice.service.JwtService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -26,6 +27,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // any logged-in user
                         .requestMatchers("/api/v1/payments/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/payments/*/refund").hasRole("ADMIN")
                         // safety net: anything not listed above needs login
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex

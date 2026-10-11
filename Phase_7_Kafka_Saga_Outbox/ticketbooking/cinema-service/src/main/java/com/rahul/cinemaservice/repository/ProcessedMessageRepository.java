@@ -1,6 +1,6 @@
 package com.rahul.cinemaservice.repository;
 
-import com.rahul.bookingservice.entity.ProcessedMessage;
+import com.rahul.cinemaservice.entity.ProcessedMessage;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

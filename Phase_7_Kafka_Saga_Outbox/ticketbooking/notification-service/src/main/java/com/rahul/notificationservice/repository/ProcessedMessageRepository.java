@@ -1,6 +1,6 @@
 package com.rahul.notificationservice.repository;
 
-import com.rahul.bookingservice.entity.ProcessedMessage;
+import com.rahul.notificationservice.entity.ProcessedMessage;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

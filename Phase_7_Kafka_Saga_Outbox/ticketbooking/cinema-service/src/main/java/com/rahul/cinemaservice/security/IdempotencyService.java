@@ -1,6 +1,6 @@
 package com.rahul.cinemaservice.security;
 
-import com.rahul.bookingservice.repository.ProcessedMessageRepository;
+import com.rahul.cinemaservice.repository.ProcessedMessageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

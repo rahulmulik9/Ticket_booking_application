@@ -1,6 +1,6 @@
 package com.rahul.paymentservice.repository;
 
-import com.rahul.bookingservice.entity.ProcessedMessage;
+import com.rahul.paymentservice.entity.ProcessedMessage;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

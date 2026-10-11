@@ -1,4 +1,4 @@
-package com.rahul.cinemaservice.security;
+package com.rahul.cinemaservice.service;
 
 import com.rahul.cinemaservice.repository.ProcessedMessageRepository;
 import lombok.RequiredArgsConstructor;

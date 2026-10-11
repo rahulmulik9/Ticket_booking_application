@@ -23,13 +23,22 @@ public class SeatReservationService {
     private final SeatService seatService;
     private final ShowService showService;
     private final CinemaEventRecorder cinemaEventRecorder;
+    private final IdempotencyService idempotencyService;
     private final TransactionTemplate transactionTemplate;
 
     public void reserve(SeatReservationEvent event) {
+        if (idempotencyService.isProcessed(event.getEventId())) {
+            log.info("SeatReservationEvent {} already processed, skipped", event.getEventId());
+            return;
+        }
+
         List<Long> seatIds = event.getSeatIds().stream().distinct().toList();
         try {
-            // one transaction: the seats become BOOKED and the SeatBookedEvent row is saved with them
+            // one transaction: the claim, the seats and the SeatBookedEvent row commit together
             transactionTemplate.executeWithoutResult(status -> {
+                if (!idempotencyService.claim(event.getEventId())) {
+                    return;   // another thread got there first
+                }
                 seatService.reserveSeats(event.getShowId(), seatIds);
                 BigDecimal total = showService.getShowById(event.getShowId()).getPrice()
                         .multiply(BigDecimal.valueOf(seatIds.size()));
@@ -43,10 +52,15 @@ public class SeatReservationService {
         }
     }
 
-    // The failed attempt changed nothing, so only the outbox row is saved.
+    // The failed attempt rolled back, claim included. A new transaction claims the event and saves the rejection.
     private void reject(SeatReservationEvent event, String reason) {
         log.info("Seats of booking {} rejected: {}", event.getBookingId(), reason);
-        transactionTemplate.executeWithoutResult(status -> cinemaEventRecorder.recordSeatBookingFailed(
-                new SeatBookingFailedEvent(event.getBookingId(), event.getShowId(), reason)));
+        transactionTemplate.executeWithoutResult(status -> {
+            if (!idempotencyService.claim(event.getEventId())) {
+                return;
+            }
+            cinemaEventRecorder.recordSeatBookingFailed(
+                    new SeatBookingFailedEvent(event.getBookingId(), event.getShowId(), reason));
+        });
     }
 }

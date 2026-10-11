@@ -5,6 +5,7 @@ import com.rahul.bookingservice.kafka.event.payment.PaymentFailedEvent;
 import com.rahul.bookingservice.kafka.event.payment.RefundCompletedEvent;
 import com.rahul.bookingservice.kafka.event.payment.RefundFailedEvent;
 import com.rahul.bookingservice.service.BookingTransactionService;
+import com.rahul.bookingservice.service.IdempotencyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaHandler;
@@ -18,17 +19,22 @@ import org.springframework.stereotype.Component;
 public class PaymentEventListener {
 
     private final BookingTransactionService bookingTransactionService;
+    private final IdempotencyService idempotencyService;
 
     @KafkaHandler
     public void onPaymentCompleted(PaymentCompletedEvent event) {
-        boolean updated = bookingTransactionService.markConfirmed(event.getBookingId(), event.getPaymentId());
-        log.info("Booking {} confirmed with payment {}, updated: {}", event.getBookingId(), event.getPaymentId(), updated);
+        idempotencyService.runOnce(event.getEventId(), () -> {
+            boolean updated = bookingTransactionService.markConfirmed(event.getBookingId(), event.getPaymentId());
+            log.info("Booking {} confirmed with payment {}, updated: {}", event.getBookingId(), event.getPaymentId(), updated);
+        });
     }
 
     @KafkaHandler
     public void onPaymentFailed(PaymentFailedEvent event) {
-        boolean updated = bookingTransactionService.markPaymentFailed(event.getBookingId(), event.getReason());
-        log.info("Payment failed for booking {}: {}, updated: {}", event.getBookingId(), event.getReason(), updated);
+        idempotencyService.runOnce(event.getEventId(), () -> {
+            boolean updated = bookingTransactionService.markPaymentFailed(event.getBookingId(), event.getReason());
+            log.info("Payment failed for booking {}: {}, updated: {}", event.getBookingId(), event.getReason(), updated);
+        });
     }
 
     @KafkaHandler

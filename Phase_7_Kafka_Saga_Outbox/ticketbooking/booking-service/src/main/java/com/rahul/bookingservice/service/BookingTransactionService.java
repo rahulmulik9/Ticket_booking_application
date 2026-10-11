@@ -56,15 +56,15 @@ public class BookingTransactionService {
     }
 
 
-
-    //old methods
     @Transactional(rollbackFor = Exception.class)
-    public Booking markConfirmed(Long bookingId, Long paymentId) {
+    public Optional<Booking> markConfirmed(Long bookingId, Long paymentId) {
         Booking booking = findById(bookingId);
+        if (booking.getStatus() != BookingStatus.CREATED) {
+            return Optional.empty();
+        }
         booking.setStatus(BookingStatus.CONFIRMED);   // saved by dirty checking when the transaction commits
         booking.setPaymentId(paymentId);
-        Hibernate.initialize(booking.getBookingSeats());   // load the seats now, the session closes after this method
-        return booking;
+        return Optional.of(booking);
     }
 
     @Transactional(rollbackFor = Exception.class)

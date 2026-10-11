@@ -3,11 +3,15 @@ package com.rahul.bookingservice.kafka.publisher;
 import com.rahul.bookingservice.entity.Booking;
 import com.rahul.bookingservice.kafka.config.KafkaTopicConfig;
 import com.rahul.bookingservice.kafka.event.cinema.SeatReservationEvent;
+import com.rahul.bookingservice.kafka.event.notification.BookingCompletedEvent;
 import com.rahul.bookingservice.kafka.event.notification.BookingFailedEvent;
+import com.rahul.bookingservice.kafka.event.payment.PaymentRequestEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
+
+import java.math.BigDecimal;
 
 @Component
 @RequiredArgsConstructor
@@ -22,6 +26,14 @@ public class BookingEventPublisher {
 
     public void publishBookingFailed(Booking booking, String reason) {
         send(booking.getId(), new BookingFailedEvent(booking.getId(), booking.getUserId(), reason));
+    }
+
+    public void publishPaymentRequest(Long bookingId, BigDecimal amount) {
+        send(bookingId, new PaymentRequestEvent(bookingId, amount));
+    }
+
+    public void publishBookingCompleted(Booking booking) {
+        send(booking.getId(), new BookingCompletedEvent(booking.getId(), booking.getUserId(), booking.getPaymentId(), booking.getTotalAmount()));
     }
 
     private void send(Long bookingId, Object event) {

@@ -25,6 +25,9 @@ public class CinemaEventListener {
     public void onSeatBooked(SeatBookedEvent event) {
         boolean updated = bookingTransactionService.markSeatsBooked(event.getBookingId(), event.getTotalAmount());
         log.info("Seats booked for booking {}, total {}, updated: {}", event.getBookingId(), event.getTotalAmount(), updated);
+        if (updated) {
+            bookingEventPublisher.publishPaymentRequest(event.getBookingId(), event.getTotalAmount());
+        }
     }
 
     @KafkaHandler

@@ -2,6 +2,7 @@ package com.rahul.bookingservice.kafka.publisher;
 
 import com.rahul.bookingservice.entity.Booking;
 import com.rahul.bookingservice.kafka.config.KafkaTopicConfig;
+import com.rahul.bookingservice.kafka.event.cinema.SeatReleaseEvent;
 import com.rahul.bookingservice.kafka.event.cinema.SeatReservationEvent;
 import com.rahul.bookingservice.kafka.event.notification.BookingCompletedEvent;
 import com.rahul.bookingservice.kafka.event.notification.BookingFailedEvent;
@@ -34,6 +35,10 @@ public class BookingEventPublisher {
 
     public void publishBookingCompleted(Booking booking) {
         send(booking.getId(), new BookingCompletedEvent(booking.getId(), booking.getUserId(), booking.getPaymentId(), booking.getTotalAmount()));
+    }
+
+    public void publishSeatRelease(Booking booking, String reason) {
+        send(booking.getId(), new SeatReleaseEvent(booking.getId(), booking.getShowId(), booking.seatIds(), reason));
     }
 
     private void send(Long bookingId, Object event) {

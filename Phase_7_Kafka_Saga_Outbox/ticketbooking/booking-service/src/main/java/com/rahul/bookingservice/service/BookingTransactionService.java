@@ -68,8 +68,14 @@ public class BookingTransactionService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void markPaymentFailed(Long bookingId) {
-        findById(bookingId).setStatus(BookingStatus.PAYMENT_FAILED);
+    public Optional<Booking> markPaymentFailed(Long bookingId) {
+        Booking booking = findById(bookingId);
+        if (booking.getStatus() != BookingStatus.CREATED) {
+            return Optional.empty();
+        }
+        booking.setStatus(BookingStatus.PAYMENT_FAILED);
+        Hibernate.initialize(booking.getBookingSeats());   // the session closes after this method
+        return Optional.of(booking);
     }
 
     @Transactional(rollbackFor = Exception.class)

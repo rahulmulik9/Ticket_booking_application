@@ -1,6 +1,7 @@
 package com.rahul.bookingservice.kafka.consumer;
 
 import com.rahul.bookingservice.kafka.event.payment.PaymentCompletedEvent;
+import com.rahul.bookingservice.kafka.event.payment.PaymentFailedEvent;
 import com.rahul.bookingservice.kafka.publisher.BookingEventPublisher;
 import com.rahul.bookingservice.service.BookingTransactionService;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,18 @@ public class PaymentEventListener {
                 () -> log.info("Booking {} is no longer CREATED, confirmation skipped", event.getBookingId()));
     }
 
-    // PaymentFailedEvent is handled in Step 4 and the refund events in Step 5.
+    @KafkaHandler
+    public void onPaymentFailed(PaymentFailedEvent event) {
+        bookingTransactionService.markPaymentFailed(event.getBookingId()).ifPresentOrElse(
+                booking -> {
+                    log.info("Payment failed for booking {}: {}", booking.getId(), event.getReason());
+                    bookingEventPublisher.publishSeatRelease(booking, "PAYMENT_FAILED");   // undo: free the seats
+                    bookingEventPublisher.publishBookingFailed(booking, event.getReason());   // tell the user
+                },
+                () -> log.info("Booking {} is no longer CREATED, payment failure skipped", event.getBookingId()));
+    }
+
+
     @KafkaHandler(isDefault = true)
     public void onNotHandledYet(Object event) {
         log.warn("No handler yet for {}", event.getClass().getSimpleName());

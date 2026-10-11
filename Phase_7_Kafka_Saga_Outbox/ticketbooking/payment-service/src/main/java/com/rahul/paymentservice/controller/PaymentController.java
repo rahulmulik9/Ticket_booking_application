@@ -2,8 +2,10 @@ package com.rahul.paymentservice.controller;
 
 import com.rahul.paymentservice.dto.CreatePaymentRequest;
 import com.rahul.paymentservice.dto.PaymentResponse;
+import com.rahul.paymentservice.dto.RefundResponse;
 import com.rahul.paymentservice.mapper.PaymentMapper;
 import com.rahul.paymentservice.service.PaymentService;
+import com.rahul.paymentservice.service.RefundService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -27,6 +29,7 @@ public class PaymentController {
 
     private final PaymentService paymentService;
     private final PaymentMapper paymentMapper;
+    private final RefundService refundService;
 
     @Operation(summary = "Pay for a booking")
     @ApiResponses({
@@ -48,5 +51,17 @@ public class PaymentController {
     @GetMapping("/{id}")
     public PaymentResponse getPaymentById(@PathVariable Long id) {
         return paymentMapper.toResponse(paymentService.getPaymentById(id));
+    }
+
+
+    @Operation(summary = "Refund a successful payment (admin only). Also used to retry a failed refund.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Refund processed, check the status field (DONE or FAILED)"),
+            @ApiResponse(responseCode = "404", description = "Payment not found"),
+            @ApiResponse(responseCode = "409", description = "Payment is not in SUCCESS state")
+    })
+    @PostMapping("/{id}/refund")
+    public RefundResponse refundPayment(@PathVariable Long id) {
+        return RefundResponse.from(refundService.refund(id));
     }
 }

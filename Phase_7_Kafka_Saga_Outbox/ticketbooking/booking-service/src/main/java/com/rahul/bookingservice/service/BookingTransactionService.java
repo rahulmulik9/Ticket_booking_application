@@ -4,6 +4,7 @@ import com.rahul.bookingservice.entity.Booking;
 import com.rahul.bookingservice.enums.BookingStatus;
 import com.rahul.bookingservice.exception.BookingStateException;
 import com.rahul.bookingservice.exception.ResourceNotFoundException;
+import com.rahul.bookingservice.kafka.publisher.BookingEventPublisher;
 import com.rahul.bookingservice.repository.BookingRepository;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.Hibernate;
@@ -12,16 +13,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
-// Only the database work lives here, in its own bean. BookingService calls it from outside,
-// so the @Transactional proxy always works (the self-invocation lesson from Phase 2).
-// The Cinema and Payment calls stay outside every transaction, so a database connection
-// is never held while waiting on the network.
+
+// Every method here changes the booking AND writes its outbox event in one transaction.
+// Either both are saved or neither is, so an event can no longer be lost after a save.
+// The status guards make a repeated message harmless: it finds another status and returns false.
 @Service
 @RequiredArgsConstructor
 public class BookingTransactionService {
 
     private final BookingRepository bookingRepository;
+    private final BookingEventPublisher bookingEventPublisher;
 
     @Transactional(rollbackFor = Exception.class)
     public Booking savePending(Long userId, Long showId, List<Long> seatIds) {
@@ -30,10 +31,12 @@ public class BookingTransactionService {
         booking.setShowId(showId);
         booking.setStatus(BookingStatus.PENDING);   // no seats held and no total yet
         seatIds.forEach(booking::addSeat);
-        return bookingRepository.save(booking);
+
+        Booking saved = bookingRepository.save(booking);
+        bookingEventPublisher.publishSeatReservation(saved);
+        return saved;
     }
 
-    // Only a PENDING booking can move on. A repeated message finds another status and is skipped.
     @Transactional(rollbackFor = Exception.class)
     public boolean markSeatsBooked(Long bookingId, BigDecimal totalAmount) {
         Booking booking = findById(bookingId);
@@ -42,40 +45,43 @@ public class BookingTransactionService {
         }
         booking.setTotalAmount(totalAmount);
         booking.setStatus(BookingStatus.CREATED);
+        bookingEventPublisher.publishPaymentRequest(bookingId, totalAmount);
         return true;
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public Optional<Booking> markRejected(Long bookingId) {
+    public boolean markRejected(Long bookingId, String reason) {
         Booking booking = findById(bookingId);
         if (booking.getStatus() != BookingStatus.PENDING) {
-            return Optional.empty();
+            return false;
         }
         booking.setStatus(BookingStatus.REJECTED);
-        return Optional.of(booking);
+        bookingEventPublisher.publishBookingFailed(booking, reason);
+        return true;
     }
 
-
     @Transactional(rollbackFor = Exception.class)
-    public Optional<Booking> markConfirmed(Long bookingId, Long paymentId) {
+    public boolean markConfirmed(Long bookingId, Long paymentId) {
         Booking booking = findById(bookingId);
         if (booking.getStatus() != BookingStatus.CREATED) {
-            return Optional.empty();
+            return false;
         }
-        booking.setStatus(BookingStatus.CONFIRMED);   // saved by dirty checking when the transaction commits
+        booking.setStatus(BookingStatus.CONFIRMED);
         booking.setPaymentId(paymentId);
-        return Optional.of(booking);
+        bookingEventPublisher.publishBookingCompleted(booking);
+        return true;
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public Optional<Booking> markPaymentFailed(Long bookingId) {
+    public boolean markPaymentFailed(Long bookingId, String reason) {
         Booking booking = findById(bookingId);
         if (booking.getStatus() != BookingStatus.CREATED) {
-            return Optional.empty();
+            return false;
         }
         booking.setStatus(BookingStatus.PAYMENT_FAILED);
-        Hibernate.initialize(booking.getBookingSeats());   // the session closes after this method
-        return Optional.of(booking);
+        bookingEventPublisher.publishSeatRelease(booking, "PAYMENT_FAILED");   // the undo step
+        bookingEventPublisher.publishBookingFailed(booking, reason);
+        return true;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -83,15 +89,17 @@ public class BookingTransactionService {
         Booking booking = bookingRepository.findForUpdate(bookingId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found with id " + bookingId));
 
-        // Only a CONFIRMED booking still owns its seats. For CANCELLED and PAYMENT_FAILED the seats were already
-        // freed, and releasing them again could free seats that someone else has booked since.
-        // CREATED is still being paid for, so it cannot be cancelled either.
+        // Only a CONFIRMED booking still owns its seats and its payment.
         if (booking.getStatus() != BookingStatus.CONFIRMED) {
             throw new BookingStateException("Only a confirmed booking can be cancelled");
         }
 
         booking.setStatus(BookingStatus.CANCELLED);
-        Hibernate.initialize(booking.getBookingSeats());
+        Hibernate.initialize(booking.getBookingSeats());   // the controller reads the seats after the session closes
+
+        bookingEventPublisher.publishSeatRelease(booking, "CANCELLED");
+        bookingEventPublisher.publishRefundRequest(booking);
+        bookingEventPublisher.publishBookingCancelled(booking);
         return booking;
     }
 

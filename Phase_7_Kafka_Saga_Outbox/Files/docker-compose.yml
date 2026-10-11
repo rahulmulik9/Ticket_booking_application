@@ -115,4 +115,5 @@ volumes:
   cinema-pgdata:
   booking-pgdata:
   payment-pgdata:
+  notification-pgdata:
   kafka-data:

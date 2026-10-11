@@ -4,7 +4,7 @@ import com.rahul.bookingservice.entity.Booking;
 import com.rahul.bookingservice.enums.BookingStatus;
 import com.rahul.bookingservice.exception.BookingStateException;
 import com.rahul.bookingservice.exception.ResourceNotFoundException;
-import com.rahul.bookingservice.kafka.publisher.BookingEventPublisher;
+import com.rahul.bookingservice.kafka.publisher.BookingEventRecorder;
 import com.rahul.bookingservice.repository.BookingRepository;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.Hibernate;
@@ -22,7 +22,7 @@ import java.util.List;
 public class BookingTransactionService {
 
     private final BookingRepository bookingRepository;
-    private final BookingEventPublisher bookingEventPublisher;
+    private final BookingEventRecorder bookingEventRecorder;
 
     @Transactional(rollbackFor = Exception.class)
     public Booking savePending(Long userId, Long showId, List<Long> seatIds) {
@@ -33,7 +33,7 @@ public class BookingTransactionService {
         seatIds.forEach(booking::addSeat);
 
         Booking saved = bookingRepository.save(booking);
-        bookingEventPublisher.publishSeatReservation(saved);
+        bookingEventRecorder.recordSeatReservation(saved);
         return saved;
     }
 
@@ -45,7 +45,7 @@ public class BookingTransactionService {
         }
         booking.setTotalAmount(totalAmount);
         booking.setStatus(BookingStatus.CREATED);
-        bookingEventPublisher.publishPaymentRequest(bookingId, totalAmount);
+        bookingEventRecorder.recordPaymentRequest(bookingId, totalAmount);
         return true;
     }
 
@@ -56,7 +56,7 @@ public class BookingTransactionService {
             return false;
         }
         booking.setStatus(BookingStatus.REJECTED);
-        bookingEventPublisher.publishBookingFailed(booking, reason);
+        bookingEventRecorder.recordBookingFailed(booking, reason);
         return true;
     }
 
@@ -68,7 +68,7 @@ public class BookingTransactionService {
         }
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setPaymentId(paymentId);
-        bookingEventPublisher.publishBookingCompleted(booking);
+        bookingEventRecorder.recordBookingCompleted(booking);
         return true;
     }
 
@@ -79,8 +79,8 @@ public class BookingTransactionService {
             return false;
         }
         booking.setStatus(BookingStatus.PAYMENT_FAILED);
-        bookingEventPublisher.publishSeatRelease(booking, "PAYMENT_FAILED");   // the undo step
-        bookingEventPublisher.publishBookingFailed(booking, reason);
+        bookingEventRecorder.recordSeatRelease(booking, "PAYMENT_FAILED");   // the undo step
+        bookingEventRecorder.recordBookingFailed(booking, reason);
         return true;
     }
 
@@ -97,9 +97,9 @@ public class BookingTransactionService {
         booking.setStatus(BookingStatus.CANCELLED);
         Hibernate.initialize(booking.getBookingSeats());   // the controller reads the seats after the session closes
 
-        bookingEventPublisher.publishSeatRelease(booking, "CANCELLED");
-        bookingEventPublisher.publishRefundRequest(booking);
-        bookingEventPublisher.publishBookingCancelled(booking);
+        bookingEventRecorder.recordSeatRelease(booking, "CANCELLED");
+        bookingEventRecorder.recordRefundRequest(booking);
+        bookingEventRecorder.recordBookingCancelled(booking);
         return booking;
     }
 

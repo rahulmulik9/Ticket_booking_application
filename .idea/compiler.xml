@@ -9,8 +9,8 @@
         <outputRelativeToContentRoot value="true" />
         <module name="config-server" />
         <module name="payment-service" />
-        <module name="booking-service" />
         <module name="cinema-service" />
+        <module name="booking-service" />
         <module name="api-gateway" />
         <module name="user-service" />
         <module name="eureka-server" />

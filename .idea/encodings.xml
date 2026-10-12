@@ -14,5 +14,13 @@
     <file url="file://$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/notification-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/payment-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Phase_6_Microservices/ticketbooking/user-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Phase_7_Kafka_Saga_Outbox/ticketbooking/api-gateway/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Phase_7_Kafka_Saga_Outbox/ticketbooking/booking-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Phase_7_Kafka_Saga_Outbox/ticketbooking/cinema-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Phase_7_Kafka_Saga_Outbox/ticketbooking/config-server/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Phase_7_Kafka_Saga_Outbox/ticketbooking/eureka-server/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Phase_7_Kafka_Saga_Outbox/ticketbooking/notification-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Phase_7_Kafka_Saga_Outbox/ticketbooking/payment-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Phase_7_Kafka_Saga_Outbox/ticketbooking/user-service/src/main/java" charset="UTF-8" />
   </component>
 </project>

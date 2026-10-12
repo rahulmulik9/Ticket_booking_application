@@ -5,7 +5,7 @@
     <option name="VM_PARAMETERS" value="-Duser.timezone=Asia/Kolkata" />
     <extension name="coverage">
       <pattern>
-        <option name="PATTERN" value="com.rahul.cinemaservice.*" />
+        <option name="PATTERN" value="com.rahul.cinemaservice.service.*" />
         <option name="ENABLED" value="true" />
       </pattern>
     </extension>

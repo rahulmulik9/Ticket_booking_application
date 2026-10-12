@@ -1,0 +1,21 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/rahulmulik9/ticket-booking-config-repo.git
+          default-label: master
+          # private repo only: use a personal access token, never your real password
+          # username: ${GIT_USERNAME}
+          # password: ${GIT_TOKEN}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

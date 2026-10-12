@@ -14,4 +14,9 @@ public class KafkaTopicConfig {
     public NewTopic paymentEventsTopic() {
         return TopicBuilder.name(PAYMENT_EVENTS).partitions(3).replicas(1).build();
     }
+
+    @Bean
+    public NewTopic paymentEventsDeadLetterTopic() {
+        return TopicBuilder.name("payment-events-dlt").partitions(3).replicas(1).build();
+    }
 }

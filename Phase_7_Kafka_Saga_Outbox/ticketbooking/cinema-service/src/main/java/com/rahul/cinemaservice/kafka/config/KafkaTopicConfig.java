@@ -14,4 +14,9 @@ public class KafkaTopicConfig {
     public NewTopic cinemaEventsTopic() {
         return TopicBuilder.name(CINEMA_EVENTS).partitions(3).replicas(1).build();
     }
+
+    @Bean
+    public NewTopic cinemaEventsDeadLetterTopic() {
+        return TopicBuilder.name("cinema-events-dlt").partitions(3).replicas(1).build();
+    }
 }

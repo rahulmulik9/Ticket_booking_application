@@ -1,17 +1,21 @@
 package com.rahul.bookingservice.service;
 
 import com.rahul.bookingservice.entity.Booking;
+import com.rahul.bookingservice.entity.IdempotencyKey;
 import com.rahul.bookingservice.enums.BookingStatus;
 import com.rahul.bookingservice.exception.BookingStateException;
+import com.rahul.bookingservice.exception.IdempotencyKeyReuseException;
 import com.rahul.bookingservice.exception.ResourceNotFoundException;
 import com.rahul.bookingservice.kafka.publisher.BookingEventRecorder;
 import com.rahul.bookingservice.repository.BookingRepository;
+import com.rahul.bookingservice.repository.IdempotencyKeyRepository;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.time.LocalDateTime;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.List;
 
 // Every method here changes the booking AND writes its outbox event in one transaction.
@@ -23,9 +27,25 @@ public class BookingTransactionService {
 
     private final BookingRepository bookingRepository;
     private final BookingEventRecorder bookingEventRecorder;
+    private static final Duration KEY_TTL = Duration.ofHours(24);
+    private final IdempotencyKeyRepository idempotencyKeyRepository;
 
+    // The key claim, the booking and the outbox row commit together.
+    // A repeated request finds the key and returns the same booking.
     @Transactional(rollbackFor = Exception.class)
-    public Booking savePending(Long userId, Long showId, List<Long> seatIds) {
+    public Booking savePending(Long userId, String keyValue, String requestHash, Long showId, List<Long> seatIds) {
+        int claimed = idempotencyKeyRepository.insertIfAbsent(userId, keyValue, requestHash, LocalDateTime.now().plus(KEY_TTL));
+        IdempotencyKey key = idempotencyKeyRepository.findByUserIdAndKeyValue(userId, keyValue).orElseThrow();
+
+        if (claimed == 0) {   // we have seen this key before
+            if (!key.getRequestHash().equals(requestHash)) {
+                throw new IdempotencyKeyReuseException("Idempotency-Key was already used with a different request");
+            }
+            Booking existing = findById(key.getResourceId());
+            Hibernate.initialize(existing.getBookingSeats());
+            return existing;
+        }
+
         Booking booking = new Booking();
         booking.setUserId(userId);
         booking.setShowId(showId);
@@ -33,6 +53,7 @@ public class BookingTransactionService {
         seatIds.forEach(booking::addSeat);
 
         Booking saved = bookingRepository.save(booking);
+        key.setResourceId(saved.getId());   // saved with the transaction, no extra call
         bookingEventRecorder.recordSeatReservation(saved);
         return saved;
     }

@@ -4,6 +4,7 @@ import com.rahul.bookingservice.dto.BookingRequest;
 import com.rahul.bookingservice.entity.Booking;
 import com.rahul.bookingservice.exception.ResourceNotFoundException;
 import com.rahul.bookingservice.repository.BookingRepository;
+import com.rahul.bookingservice.util.IdempotencyUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.TreeSet;
 
 @Service
 @RequiredArgsConstructor
@@ -20,12 +22,15 @@ public class BookingService {
     private final BookingTransactionService bookingTransactionService;
     private final BookingRepository bookingRepository;
 
-    // Save the request and its outbox event in one transaction. The user does not wait for Cinema.
-    public Booking createBooking(Long userId, BookingRequest request) {
-        List<Long> seatIds = new ArrayList<>(new LinkedHashSet<>(request.getSeatIds()));   // drop duplicates
+    public Booking createBooking(Long userId, String idempotencyKey, BookingRequest request) {
+        IdempotencyUtil.validateKey(idempotencyKey);
 
-        Booking booking = bookingTransactionService.savePending(userId, request.getShowId(), seatIds);
-        log.info("Booking {} saved as PENDING for user {}", booking.getId(), userId);
+        // drop duplicates and sort, so [2,1] and [1,2] count as the same request
+        List<Long> seatIds = new ArrayList<>(new TreeSet<>(request.getSeatIds()));
+        String requestHash = IdempotencyUtil.sha256(request.getShowId() + ":" + seatIds);
+
+        Booking booking = bookingTransactionService.savePending(userId, idempotencyKey, requestHash, request.getShowId(), seatIds);
+        log.info("Booking {} is PENDING for user {} (key {})", booking.getId(), userId, idempotencyKey);
         return booking;
     }
 

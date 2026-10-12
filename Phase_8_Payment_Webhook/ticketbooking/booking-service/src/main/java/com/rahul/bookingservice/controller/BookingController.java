@@ -12,13 +12,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -32,21 +26,19 @@ public class BookingController {
     private final BookingService bookingService;
     private final BookingMapper bookingMapper;
 
-    @Operation(summary = "Book seats for a show")
+    @Operation(summary = "Book seats for a show. Send a unique Idempotency-Key header. Poll GET /bookings/{id} for the final status.")
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Booking confirmed"),
-            @ApiResponse(responseCode = "404", description = "Show or seat not found"),
-            @ApiResponse(responseCode = "409", description = "A seat is already booked"),
-            @ApiResponse(responseCode = "503", description = "Cinema service is unavailable"),
-            @ApiResponse(responseCode = "402", description = "Payment was declined"),
-            @ApiResponse(responseCode = "503", description = "Cinema or Payment service is unavailable")
+            @ApiResponse(responseCode = "201", description = "Booking accepted, status is PENDING"),
+            @ApiResponse(responseCode = "400", description = "Invalid body or missing Idempotency-Key"),
+            @ApiResponse(responseCode = "422", description = "Idempotency-Key reused with a different request")
     })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BookingResponse createBooking(@AuthenticationPrincipal Long userId, @Valid @RequestBody BookingRequest request) {
-        return bookingMapper.toResponse(bookingService.createBooking(userId, request));
+    public BookingResponse createBooking(@AuthenticationPrincipal Long userId,
+                                         @RequestHeader("Idempotency-Key") String idempotencyKey,
+                                         @Valid @RequestBody BookingRequest request) {
+        return bookingMapper.toResponse(bookingService.createBooking(userId, idempotencyKey, request));
     }
-
     @Operation(summary = "List my bookings, newest first")
     @GetMapping
     public List<BookingResponse> getMyBookings(@AuthenticationPrincipal Long userId) {

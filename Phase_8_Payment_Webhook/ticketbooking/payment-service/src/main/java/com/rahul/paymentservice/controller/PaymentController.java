@@ -13,13 +13,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Payments")
 @RestController
@@ -31,16 +26,19 @@ public class PaymentController {
     private final PaymentMapper paymentMapper;
     private final RefundService refundService;
 
-    @Operation(summary = "Pay for a booking")
+    @Operation(summary = "Pay for a booking. Send a unique Idempotency-Key header.")
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Payment recorded, check the status field (SUCCESS or FAILED)"),
-            @ApiResponse(responseCode = "400", description = "Invalid request body"),
-            @ApiResponse(responseCode = "401", description = "Missing or invalid token")
+            @ApiResponse(responseCode = "201", description = "Payment recorded, check the status field"),
+            @ApiResponse(responseCode = "400", description = "Invalid body or missing Idempotency-Key"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid token"),
+            @ApiResponse(responseCode = "422", description = "Idempotency-Key reused with a different request")
     })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public PaymentResponse createPayment(@Valid @RequestBody CreatePaymentRequest request) {
-        return paymentMapper.toResponse(paymentService.createPayment(request));
+    public PaymentResponse createPayment(@AuthenticationPrincipal Long userId,
+                                         @RequestHeader("Idempotency-Key") String idempotencyKey,
+                                         @Valid @RequestBody CreatePaymentRequest request) {
+        return paymentMapper.toResponse(paymentService.createPayment(userId, idempotencyKey, request));
     }
 
     @Operation(summary = "Get a payment by id")

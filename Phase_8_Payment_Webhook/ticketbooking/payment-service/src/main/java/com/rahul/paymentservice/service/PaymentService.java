@@ -7,6 +7,7 @@ import com.rahul.paymentservice.exception.ResourceNotFoundException;
 import com.rahul.paymentservice.gateway.GatewayResult;
 import com.rahul.paymentservice.gateway.PaymentGateway;
 import com.rahul.paymentservice.repository.PaymentRepository;
+import com.rahul.paymentservice.util.IdempotencyUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,12 +21,23 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final PaymentGateway paymentGateway;
+    private final PaymentTransactionService paymentTransactionService;
 
-    // Used by the REST endpoint. No events, same behaviour as before.
-    public Payment createPayment(CreatePaymentRequest request) {
-        Payment pending = createPending(request.getBookingId(), request.getAmount());
-        GatewayResult result = paymentGateway.charge(pending.getBookingId(), pending.getAmount());
-        return finish(pending, result);
+    // Used by the REST endpoint.
+    public Payment createPayment(Long userId, String idempotencyKey, CreatePaymentRequest request) {
+        IdempotencyUtil.validateKey(idempotencyKey);
+        String requestHash = IdempotencyUtil.sha256(
+                request.getBookingId() + ":" + request.getAmount().stripTrailingZeros().toPlainString());
+
+        PaymentClaim claim = paymentTransactionService.claimAndCreatePending(
+                userId, idempotencyKey, requestHash, request.getBookingId(), request.getAmount());
+        if (claim.isReplayed()) {
+            log.info("Repeated request for key {}, returning payment {}", idempotencyKey, claim.getPayment().getId());
+            return claim.getPayment();
+        }
+
+        GatewayResult result = paymentGateway.charge(claim.getPayment().getBookingId(), claim.getPayment().getAmount());
+        return finish(claim.getPayment(), result);
     }
 
     // No @Transactional on purpose. Each save commits by itself, so the database

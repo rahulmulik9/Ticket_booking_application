@@ -1,6 +1,5 @@
 package com.rahul.bookingservice.exception;
 
-import feign.FeignException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -24,17 +23,10 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
 
-    // 409: a seat is taken, or the booking is already cancelled
-    @ExceptionHandler({SeatNotAvailableException.class, BookingStateException.class})
-    public ResponseEntity<ErrorResponse> handleConflict(RuntimeException ex, HttpServletRequest request) {
+    // 409: the booking is not in a state that allows the action, for example cancelling twice
+    @ExceptionHandler(BookingStateException.class)
+    public ResponseEntity<ErrorResponse> handleConflict(BookingStateException ex, HttpServletRequest request) {
         return build(HttpStatus.CONFLICT, ex.getMessage(), request);
-    }
-
-    // 503: Cinema is down, too slow, or answered with something we did not expect
-    @ExceptionHandler(FeignException.class)
-    public ResponseEntity<ErrorResponse> handleCinemaDown(FeignException ex, HttpServletRequest request) {
-        log.error("Cinema service call failed on {}", request.getRequestURI(), ex);
-        return build(HttpStatus.SERVICE_UNAVAILABLE, "Cinema service is unavailable, try again shortly", request);
     }
 
     // 400: validation failed
@@ -58,18 +50,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleOthers(Exception ex, HttpServletRequest request) {
         log.error("Unexpected error on {}", request.getRequestURI(), ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Something went wrong", request);
-    }
-
-    // 402: Payment answered, and the answer was "declined"
-    @ExceptionHandler(PaymentFailedException.class)
-    public ResponseEntity<ErrorResponse> handlePaymentFailed(PaymentFailedException ex, HttpServletRequest request) {
-        return build(HttpStatus.PAYMENT_REQUIRED, ex.getMessage(), request);
-    }
-
-    // 503: Payment is down or too slow
-    @ExceptionHandler(PaymentUnavailableException.class)
-    public ResponseEntity<ErrorResponse> handlePaymentDown(PaymentUnavailableException ex, HttpServletRequest request) {
-        return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request);
     }
 
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, HttpServletRequest request) {

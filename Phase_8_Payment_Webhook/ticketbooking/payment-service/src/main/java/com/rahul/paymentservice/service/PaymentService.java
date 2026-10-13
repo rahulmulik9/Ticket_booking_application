@@ -14,6 +14,11 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 
+
+// REST entry point. Called by PaymentController (POST /api/v1/payments).
+// Duplicate protection: Idempotency-Key header. Output: the payment in the HTTP response.
+// Also holds createPending() and finish(), which PaymentProcessingService reuses.
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -26,11 +31,10 @@ public class PaymentService {
     // Used by the REST endpoint.
     public Payment createPayment(Long userId, String idempotencyKey, CreatePaymentRequest request) {
         IdempotencyUtil.validateKey(idempotencyKey);
-        String requestHash = IdempotencyUtil.sha256(
-                request.getBookingId() + ":" + request.getAmount().stripTrailingZeros().toPlainString());
+        String requestHash = IdempotencyUtil.sha256(request.getBookingId() + ":" + request.getAmount().stripTrailingZeros().toPlainString());
 
-        PaymentClaim claim = paymentTransactionService.claimAndCreatePending(
-                userId, idempotencyKey, requestHash, request.getBookingId(), request.getAmount());
+        PaymentClaim claim = paymentTransactionService.claimAndCreatePending(userId, idempotencyKey, requestHash, request.getBookingId(), request.getAmount());
+
         if (claim.isReplayed()) {
             log.info("Repeated request for key {}, returning payment {}", idempotencyKey, claim.getPayment().getId());
             return claim.getPayment();

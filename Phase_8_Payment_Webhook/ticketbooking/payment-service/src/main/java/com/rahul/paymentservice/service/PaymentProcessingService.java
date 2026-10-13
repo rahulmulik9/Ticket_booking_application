@@ -13,6 +13,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+// Kafka entry point. Called by BookingEventListener for each PaymentRequestEvent.
+// Duplicate protection: event id (processed_messages). Output: outbox events, no HTTP response.
+
+
 @Service
 @RequiredArgsConstructor
 @Slf4j

@@ -72,6 +72,12 @@ public class GlobalExceptionHandler {
     }
 
 
+    // 401: the webhook signature is missing or wrong
+    @ExceptionHandler(InvalidWebhookSignatureException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidSignature(InvalidWebhookSignatureException ex, HttpServletRequest request) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
+    }
+
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, HttpServletRequest request) {
         ErrorResponse body = new ErrorResponse(
                 status.value(),

@@ -40,7 +40,11 @@ public class PaymentService {
             return claim.getPayment();
         }
 
-        GatewayResult result = paymentGateway.charge(claim.getPayment().getBookingId(), claim.getPayment().getAmount());
+        GatewayResult result = paymentGateway.charge(
+                claim.getPayment().getId(), claim.getPayment().getBookingId(), claim.getPayment().getAmount());
+        if (result.isPending()) {
+            return claim.getPayment();   // still PENDING, the webhook will finish it
+        }
         return finish(claim.getPayment(), result);
     }
 

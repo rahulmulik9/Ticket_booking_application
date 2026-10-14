@@ -36,7 +36,16 @@ public class PaymentProcessingService {
         }
 
         Payment pending = paymentService.createPending(event.getBookingId(), event.getAmount());   // commits
-        GatewayResult result = paymentGateway.charge(pending.getBookingId(), pending.getAmount()); // no transaction here
+
+        GatewayResult result = paymentGateway.charge(pending.getId(), pending.getBookingId(), pending.getAmount()); // no transaction here
+
+        if (result.isPending()) {
+            // The answer comes by webhook, which finishes the payment and writes the event.
+            // We only remember that this request was handled.
+            transactionTemplate.executeWithoutResult(status -> idempotencyService.claim(event.getEventId()));
+            log.info("Payment {} is PENDING, waiting for the gateway webhook", pending.getId());
+            return;
+        }
 
         // one transaction: the claim, the final status and the event row commit together
         transactionTemplate.executeWithoutResult(status -> {

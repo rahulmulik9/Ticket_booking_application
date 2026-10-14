@@ -40,9 +40,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Claims claims = jwtService.parse(token);
                 Long userId = Long.valueOf(claims.getSubject());
                 String role = claims.get("role", String.class);
+                String email = claims.get("email", String.class);
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         userId, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+                authentication.setDetails(email);   // read by BookingController when a booking is created
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (JwtException | IllegalArgumentException ex) {
                 // bad token: stay anonymous, the entry point answers 401 if the URL needs login

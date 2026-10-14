@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,18 +27,14 @@ public class BookingController {
     private final BookingService bookingService;
     private final BookingMapper bookingMapper;
 
-    @Operation(summary = "Book seats for a show. Send a unique Idempotency-Key header. Poll GET /bookings/{id} for the final status.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Booking accepted, status is PENDING"),
-            @ApiResponse(responseCode = "400", description = "Invalid body or missing Idempotency-Key"),
-            @ApiResponse(responseCode = "422", description = "Idempotency-Key reused with a different request")
-    })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public BookingResponse createBooking(@AuthenticationPrincipal Long userId,
+                                         Authentication authentication,
                                          @RequestHeader("Idempotency-Key") String idempotencyKey,
                                          @Valid @RequestBody BookingRequest request) {
-        return bookingMapper.toResponse(bookingService.createBooking(userId, idempotencyKey, request));
+        String userEmail = (String) authentication.getDetails();   // set by JwtAuthenticationFilter
+        return bookingMapper.toResponse(bookingService.createBooking(userId, userEmail, idempotencyKey, request));
     }
     @Operation(summary = "List my bookings, newest first")
     @GetMapping

@@ -61,6 +61,8 @@ public class Booking {
         this.createdAt = LocalDateTime.now();
     }
 
+    @Column(length = 255)
+    private String userEmail;   // copied from the JWT, so events can carry it later
 
     public void addSeat(Long seatId) {
         BookingSeat bookingSeat = new BookingSeat();

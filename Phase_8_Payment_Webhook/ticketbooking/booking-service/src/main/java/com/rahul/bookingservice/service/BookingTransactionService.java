@@ -33,7 +33,7 @@ public class BookingTransactionService {
     // The key claim, the booking and the outbox row commit together.
     // A repeated request finds the key and returns the same booking.
     @Transactional(rollbackFor = Exception.class)
-    public Booking savePending(Long userId, String keyValue, String requestHash, Long showId, List<Long> seatIds) {
+    public Booking savePending(Long userId, String userEmail, String keyValue, String requestHash, Long showId, List<Long> seatIds) {
         int claimed = idempotencyKeyRepository.insertIfAbsent(userId, keyValue, requestHash, LocalDateTime.now().plus(KEY_TTL));
         IdempotencyKey key = idempotencyKeyRepository.findByUserIdAndKeyValue(userId, keyValue).orElseThrow();
 
@@ -49,6 +49,7 @@ public class BookingTransactionService {
         Booking booking = new Booking();
         booking.setUserId(userId);
         booking.setShowId(showId);
+        booking.setUserEmail(userEmail);
         booking.setStatus(BookingStatus.PENDING);   // no seats held and no total yet
         seatIds.forEach(booking::addSeat);
 

@@ -52,15 +52,18 @@ public class BookingEventRecorder {
 
     public void recordBookingCompleted(Booking booking) {
         write(booking.getId(), BOOKING_COMPLETED, new BookingCompletedEvent(
-                booking.getId(), booking.getUserId(), booking.getPaymentId(), booking.getTotalAmount()));
+                booking.getId(), booking.getUserId(), booking.getPaymentId(), booking.getTotalAmount(),
+                booking.getUserEmail()));
     }
 
     public void recordBookingFailed(Booking booking, String reason) {
-        write(booking.getId(), BOOKING_FAILED, new BookingFailedEvent(booking.getId(), booking.getUserId(), reason));
+        write(booking.getId(), BOOKING_FAILED, new BookingFailedEvent(
+                booking.getId(), booking.getUserId(), reason, booking.getUserEmail()));
     }
 
     public void recordBookingCancelled(Booking booking) {
-        write(booking.getId(), BOOKING_CANCELLED, new BookingCancelledEvent(booking.getId(), booking.getUserId()));
+        write(booking.getId(), BOOKING_CANCELLED, new BookingCancelledEvent(
+                booking.getId(), booking.getUserId(), booking.getUserEmail()));
     }
 
     private void write(Long bookingId, String eventType, Object event) {

@@ -17,4 +17,5 @@ public class BookingCompletedEvent extends BaseEvent {
     private Long userId;
     private Long paymentId;
     private BigDecimal totalAmount;
+    private String email;
 }

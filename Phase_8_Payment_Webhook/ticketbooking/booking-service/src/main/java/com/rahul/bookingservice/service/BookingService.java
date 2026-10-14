@@ -22,14 +22,16 @@ public class BookingService {
     private final BookingTransactionService bookingTransactionService;
     private final BookingRepository bookingRepository;
 
-    public Booking createBooking(Long userId, String idempotencyKey, BookingRequest request) {
+    public Booking createBooking(Long userId, String userEmail, String idempotencyKey, BookingRequest request) {
+
         IdempotencyUtil.validateKey(idempotencyKey);
 
         // drop duplicates and sort, so [2,1] and [1,2] count as the same request
         List<Long> seatIds = new ArrayList<>(new TreeSet<>(request.getSeatIds()));
         String requestHash = IdempotencyUtil.sha256(request.getShowId() + ":" + seatIds);
 
-        Booking booking = bookingTransactionService.savePending(userId, idempotencyKey, requestHash, request.getShowId(), seatIds);
+        Booking booking = bookingTransactionService.savePending(userId, userEmail, idempotencyKey, requestHash, request.getShowId(), seatIds);
+
         log.info("Booking {} is PENDING for user {} (key {})", booking.getId(), userId, idempotencyKey);
         return booking;
     }

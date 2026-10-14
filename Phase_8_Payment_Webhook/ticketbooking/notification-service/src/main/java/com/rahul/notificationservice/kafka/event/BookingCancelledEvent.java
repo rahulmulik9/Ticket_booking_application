@@ -12,4 +12,5 @@ import lombok.Setter;
 public class BookingCancelledEvent extends BaseEvent {
     private Long bookingId;
     private Long userId;
+    private String email;
 }

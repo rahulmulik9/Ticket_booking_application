@@ -14,4 +14,5 @@ public class BookingFailedEvent extends BaseEvent {
     private Long bookingId;
     private Long userId;
     private String reason;   // SEATS_UNAVAILABLE or PAYMENT_FAILED
+    private String email;
 }

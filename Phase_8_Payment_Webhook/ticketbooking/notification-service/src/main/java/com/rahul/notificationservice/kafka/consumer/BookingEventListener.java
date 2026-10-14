@@ -4,6 +4,7 @@ import com.rahul.notificationservice.kafka.event.BookingCancelledEvent;
 import com.rahul.notificationservice.kafka.event.BookingCompletedEvent;
 import com.rahul.notificationservice.kafka.event.BookingFailedEvent;
 import com.rahul.notificationservice.service.IdempotencyService;
+import com.rahul.notificationservice.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaHandler;
@@ -18,26 +19,21 @@ import org.springframework.stereotype.Component;
 public class BookingEventListener {
 
     private final IdempotencyService idempotencyService;
+    private final NotificationService notificationService;
 
     @KafkaHandler
     public void onBookingCompleted(BookingCompletedEvent event) {
-        idempotencyService.runOnce(event.getEventId(), () ->
-                log.info("NOTIFY user {}: booking {} is confirmed, paid {} (payment {})",
-                        event.getUserId(), event.getBookingId(), event.getTotalAmount(), event.getPaymentId()));
+        idempotencyService.runOnce(event.getEventId(), () -> notificationService.bookingConfirmed(event));
     }
 
     @KafkaHandler
     public void onBookingFailed(BookingFailedEvent event) {
-        idempotencyService.runOnce(event.getEventId(), () ->
-                log.info("NOTIFY user {}: booking {} failed, reason: {}",
-                        event.getUserId(), event.getBookingId(), event.getReason()));
+        idempotencyService.runOnce(event.getEventId(), () -> notificationService.bookingFailed(event));
     }
 
     @KafkaHandler
     public void onBookingCancelled(BookingCancelledEvent event) {
-        idempotencyService.runOnce(event.getEventId(), () ->
-                log.info("NOTIFY user {}: booking {} is cancelled, the refund is on its way",
-                        event.getUserId(), event.getBookingId()));
+        idempotencyService.runOnce(event.getEventId(), () -> notificationService.bookingCancelled(event));
     }
 
     // Events for other services land here, mapped to IgnoredEvent.

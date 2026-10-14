@@ -25,9 +25,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // public
                         .requestMatchers("/actuator/health", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        // the gateway has no JWT, it proves who it is with the X-Signature header
+                        .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/payment").permitAll()
+                        // most specific rule first, because the first matching rule wins
+                        .requestMatchers(HttpMethod.POST, "/api/v1/payments/*/refund").hasRole("ADMIN")
                         // any logged-in user
                         .requestMatchers("/api/v1/payments/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/payments/*/refund").hasRole("ADMIN")
                         // safety net: anything not listed above needs login
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex

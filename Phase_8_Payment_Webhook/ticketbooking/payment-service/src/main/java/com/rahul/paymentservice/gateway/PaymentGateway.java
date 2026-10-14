@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 // A real provider later is just another class that implements it.
 public interface PaymentGateway {
 
-    GatewayResult charge(Long bookingId, BigDecimal amount);
+    GatewayResult charge(Long paymentId, Long bookingId, BigDecimal amount);
 
     GatewayResult refund(Long bookingId, BigDecimal amount);
 }

@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Ticket Booking - Phase 6 (microservices, core)",
-    "description": "Ticket Booking API, Phase 6, with Payment connected to Booking: the important requests only, for one organizer and one user.\n\nHOW TO RUN\n1. Start everything in this order: the 4 databases, config-server, eureka-server, user-service, cinema-service, payment-service, booking-service, then api-gateway. Wait about 30 seconds so every service shows up in Eureka.\n2. Every request goes through the API Gateway (baseUrl, port 8080).\n3. The organizer is created by DevDataSeeder in user-service (app.seed.enabled: true): organizer@ticket.com, password Organizer@123.\n4. Run the folders in order. Tokens and ids are saved into collection variables by the test scripts.\n5. A booking is paid inside the same request. The fake payment gateway declines any amount above payment.gateway.max-amount (10000 in payment-service.yml), which is what folder 6 relies on.\nRe-running is safe: registration accepts 201 or 409, and each run creates a new movie and shows.",
+    "name": "Ticket Booking - Phase 8 (idempotency, async payment, webhook, notifications)",
+    "description": "Ticket Booking API, Phase 8: idempotency keys, async payment with webhook, and email notifications. Important requests only, for one organizer and one user.\n\nHOW TO RUN\n1. Start everything: the databases, Kafka, config-server, eureka-server, user-service, cinema-service, payment-service, booking-service, notification-service, then api-gateway. Wait about 30 seconds so every service shows up in Eureka.\n2. Use the COLLECTION RUNNER (or Newman), not single Send. The poll requests repeat themselves until the async result arrives, and that works only in the runner.\n3. Almost every request goes through the API Gateway (baseUrl, port 8080). Only folder 7 (webhook checks) goes straight to the Payment service, so set paymentServiceUrl to its real port.\n4. The organizer is created by DevDataSeeder in user-service: organizer@ticket.com, password Organizer@123.\n5. Config the folders rely on (payment-service config):\n   payment.gateway.async-enabled: true\n   payment.gateway.webhook-delay-ms: 2000\n   payment.gateway.max-amount: 10000\n   payment.webhook.secret must equal the webhookSecret variable below (default dev-only-secret).\n6. Run the folders in order. Tokens and ids are saved into collection variables by the test scripts.\n\nWHAT CHANGED SINCE PHASE 6\n- POST /bookings and POST /payments need an Idempotency-Key header. A repeat with the same key returns the same result (no second booking or charge). The same key with a different body gives 422.\n- POST /bookings returns 201 with status PENDING at once. The final status (CONFIRMED, REJECTED, PAYMENT_FAILED) comes later, so the collection polls GET /bookings/{id}.\n- The fake gateway answers PENDING, then calls POST /api/v1/webhooks/payment about 2 seconds later with an X-Signature. Folder 7 sends signed and unsigned webhooks by hand (the signature is calculated in each pre-request script).\n- Cancel returns CANCELLED at once. Seats and the refund follow through Kafka, so they are polled too.\n\nNOTIFICATIONS (no public endpoint, so check by hand after a run)\nSELECT booking_id, type, status, recipient FROM notification_logs ORDER BY id DESC;\nExpect BOOKING_CONFIRMED, BOOKING_FAILED (the REJECTED booking and the PAYMENT_FAILED booking) and BOOKING_CANCELLED rows, all SENT, with the recipient set to userEmail. The Notification service log also prints each \"EMAIL to ...\" line.\n\nRe-running is safe: registration accepts 201 or 409, and each run creates a new movie, new shows and new idempotency keys.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -515,16 +515,145 @@
       ]
     },
     {
-      "name": "4. User: booking (paid in the same request)",
+      "name": "4. User: booking with Idempotency-Key (Step 1)",
       "item": [
         {
-          "name": "Create booking as user (201, CONFIRMED and paid)",
+          "name": "Create booking without Idempotency-Key (400)",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"showId\": {{showId}},\n  \"seatIds\": [{{seatId1}}, {{seatId2}}]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"message names the missing header\", function () { pm.expect(pm.response.json().message).to.include(\"Idempotency-Key\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create booking with a key (201, PENDING)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{bookingKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"showId\": {{showId}},\n  \"seatIds\": [{{seatId1}}, {{seatId2}}]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// a new unique key for every run",
+                  "pm.collectionVariables.set(\"bookingKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set(\"bookingId\", b.id);",
+                  "pm.test(\"booking is PENDING, the user does not wait for payment\", function () { pm.expect(b.status).to.eql(\"PENDING\"); });",
+                  "pm.test(\"owner comes from the token\", function () { pm.expect(String(b.userId)).to.eql(pm.collectionVariables.get(\"userId\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Repeat the same request, same key (201, same booking)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{bookingKey}}"
               }
             ],
             "url": {
@@ -566,26 +695,24 @@
                 "exec": [
                   "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
                   "const b = pm.response.json();",
-                  "pm.collectionVariables.set(\"bookingId\", b.id);",
-                  "pm.collectionVariables.set(\"bookingTotal\", String(b.totalAmount));",
-                  "pm.collectionVariables.set(\"paymentId\", b.paymentId);",
-                  "pm.test(\"booking is CONFIRMED\", function () { pm.expect(b.status).to.eql(\"CONFIRMED\"); });",
-                  "pm.test(\"payment id is returned\", function () { pm.expect(b.paymentId).to.be.a(\"number\"); });",
-                  "pm.test(\"owner comes from the token\", function () { pm.expect(String(b.userId)).to.eql(pm.collectionVariables.get(\"userId\")); });",
-                  "pm.test(\"total is price x 2 seats\", function () { pm.expect(Number(b.totalAmount)).to.eql(500); });"
+                  "pm.test(\"same booking id, no second booking created\", function () { pm.expect(String(b.id)).to.eql(String(pm.collectionVariables.get(\"bookingId\"))); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Book the same seats again (409)",
+          "name": "Same key, different seats (422)",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{bookingKey}}"
               }
             ],
             "url": {
@@ -611,7 +738,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"showId\": {{showId}},\n  \"seatIds\": [{{seatId1}}, {{seatId2}}]\n}",
+              "raw": "{\n  \"showId\": {{showId}},\n  \"seatIds\": [{{seatId1}}]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -625,7 +752,75 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status is 409\", function () { pm.response.to.have.status(409); });"
+                  "pm.test(\"Status is 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"message says the key was used with a different request\", function () { pm.expect(pm.response.json().message).to.include(\"different request\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Poll the booking until CONFIRMED (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// wait 1.5 s before each try, the result arrives asynchronously (webhook, Kafka)",
+                  "setTimeout(function () {}, 1500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const MAX_TRIES = 15;",
+                  "const n = Number(pm.collectionVariables.get(\"pollCount\") || 0) + 1;",
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const finished = b.status !== \"PENDING\" && b.status !== \"CREATED\";",
+                  "if (!finished && n < MAX_TRIES) {",
+                  "  // still processing: run this same request again (works in the Collection Runner and Newman)",
+                  "  pm.collectionVariables.set(\"pollCount\", n);",
+                  "  if (pm.execution && pm.execution.setNextRequest) { pm.execution.setNextRequest(pm.info.requestName); }",
+                  "  else { postman.setNextRequest(pm.info.requestName); }",
+                  "} else {",
+                  "  pm.collectionVariables.set(\"pollCount\", 0);",
+                  "  pm.test(\"booking is CONFIRMED after the webhook\", function () { pm.expect(b.status).to.eql(\"CONFIRMED\"); });",
+                  "  pm.test(\"payment id is returned\", function () { pm.expect(b.paymentId).to.be.a(\"number\"); });",
+                  "  pm.test(\"total is price x 2 seats\", function () { pm.expect(Number(b.totalAmount)).to.eql(500); });",
+                  "  pm.collectionVariables.set(\"paymentId\", b.paymentId);",
+                  "  pm.collectionVariables.set(\"bookingTotal\", String(b.totalAmount));",
+                  "}"
                 ]
               }
             }
@@ -660,8 +855,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "const ids = [pm.collectionVariables.get(\"seatId1\"), pm.collectionVariables.get(\"seatId2\")].map(String);",
-                  "const mine = pm.response.json().filter(function (s) { return ids.includes(String(s.id)); });",
+                  "const seats = pm.response.json();",
+                  "const mine = seats.filter(function (s) { return s.id == pm.collectionVariables.get(\"seatId1\") || s.id == pm.collectionVariables.get(\"seatId2\"); });",
                   "pm.test(\"both seats are BOOKED\", function () { pm.expect(mine.length).to.eql(2); mine.forEach(function (s) { pm.expect(s.status).to.eql(\"BOOKED\"); }); });"
                 ]
               }
@@ -669,7 +864,7 @@
           ]
         },
         {
-          "name": "My bookings (200)",
+          "name": "My bookings: only one booking for this show (200)",
           "request": {
             "method": "GET",
             "header": [],
@@ -702,7 +897,10 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"contains the new booking\", function () { const ids = pm.response.json().map(function (b) { return String(b.id); }); pm.expect(ids).to.include(String(pm.collectionVariables.get(\"bookingId\"))); });"
+                  "const list = pm.response.json();",
+                  "const forShow = list.filter(function (x) { return String(x.showId) === String(pm.collectionVariables.get(\"showId\")); });",
+                  "pm.test(\"the repeated request did not create a second booking\", function () { pm.expect(forShow.length).to.eql(1); });",
+                  "pm.test(\"it is our booking\", function () { pm.expect(String(forShow[0].id)).to.eql(String(pm.collectionVariables.get(\"bookingId\"))); });"
                 ]
               }
             }
@@ -743,7 +941,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"seat ids match\", function () { pm.expect(pm.response.json().seatIds.length).to.eql(2); });"
+                  "pm.test(\"status is CONFIRMED\", function () { pm.expect(pm.response.json().status).to.eql(\"CONFIRMED\"); });"
                 ]
               }
             }
@@ -752,7 +950,146 @@
       ]
     },
     {
-      "name": "5. User: payment",
+      "name": "5. User: seats already taken (REJECTED)",
+      "item": [
+        {
+          "name": "Book the same seats again with a new key (201, PENDING)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{rejectedKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"showId\": {{showId}},\n  \"seatIds\": [{{seatId1}}, {{seatId2}}]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// a different key, so this is a new request and not a repeat",
+                  "pm.collectionVariables.set(\"rejectedKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set(\"rejectedBookingId\", b.id);",
+                  "pm.test(\"accepted as PENDING, the clash is found later by Cinema\", function () { pm.expect(b.status).to.eql(\"PENDING\"); });",
+                  "pm.test(\"it is a new booking, not the first one\", function () { pm.expect(String(b.id)).to.not.eql(String(pm.collectionVariables.get(\"bookingId\"))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Poll the booking until REJECTED (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{rejectedBookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{rejectedBookingId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// wait 1.5 s before each try, the result arrives asynchronously (webhook, Kafka)",
+                  "setTimeout(function () {}, 1500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const MAX_TRIES = 15;",
+                  "const n = Number(pm.collectionVariables.get(\"pollCount\") || 0) + 1;",
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const finished = b.status !== \"PENDING\";",
+                  "if (!finished && n < MAX_TRIES) {",
+                  "  // still processing: run this same request again (works in the Collection Runner and Newman)",
+                  "  pm.collectionVariables.set(\"pollCount\", n);",
+                  "  if (pm.execution && pm.execution.setNextRequest) { pm.execution.setNextRequest(pm.info.requestName); }",
+                  "  else { postman.setNextRequest(pm.info.requestName); }",
+                  "} else {",
+                  "  pm.collectionVariables.set(\"pollCount\", 0);",
+                  "  pm.test(\"booking is REJECTED because the seats were taken\", function () { pm.expect(b.status).to.eql(\"REJECTED\"); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. User: payment (webhook result and REST Idempotency-Key)",
       "item": [
         {
           "name": "Get the payment made for the booking (200, SUCCESS)",
@@ -797,11 +1134,839 @@
               }
             }
           ]
+        },
+        {
+          "name": "Pay without Idempotency-Key (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingId\": {{bookingId}},\n  \"amount\": 100.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"message names the missing header\", function () { pm.expect(pm.response.json().message).to.include(\"Idempotency-Key\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pay with a key (201, PENDING until the webhook)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{paymentKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingId\": {{bookingId}},\n  \"amount\": 100.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// the booking is already CONFIRMED, so Booking ignores the payment event this creates",
+                  "pm.collectionVariables.set(\"paymentKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "const p = pm.response.json();",
+                  "pm.collectionVariables.set(\"restPaymentId\", p.id);",
+                  "pm.test(\"PENDING (async gateway) or SUCCESS (sync gateway)\", function () { pm.expect(p.status).to.be.oneOf([\"PENDING\", \"SUCCESS\"]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Repeat with the same key (201, same payment, no second charge)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{paymentKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingId\": {{bookingId}},\n  \"amount\": 100.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"same payment id\", function () { pm.expect(String(pm.response.json().id)).to.eql(String(pm.collectionVariables.get(\"restPaymentId\"))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Same key, different amount (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{paymentKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingId\": {{bookingId}},\n  \"amount\": 200.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"message says the key was used with a different request\", function () { pm.expect(pm.response.json().message).to.include(\"different request\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Poll the REST payment until the webhook finishes it (SUCCESS)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments/{{restPaymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "{{restPaymentId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// wait 1.5 s before each try, the result arrives asynchronously (webhook, Kafka)",
+                  "setTimeout(function () {}, 1500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const MAX_TRIES = 15;",
+                  "const n = Number(pm.collectionVariables.get(\"pollCount\") || 0) + 1;",
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const finished = b.status !== \"PENDING\";",
+                  "if (!finished && n < MAX_TRIES) {",
+                  "  // still processing: run this same request again (works in the Collection Runner and Newman)",
+                  "  pm.collectionVariables.set(\"pollCount\", n);",
+                  "  if (pm.execution && pm.execution.setNextRequest) { pm.execution.setNextRequest(pm.info.requestName); }",
+                  "  else { postman.setNextRequest(pm.info.requestName); }",
+                  "} else {",
+                  "  pm.collectionVariables.set(\"pollCount\", 0);",
+                  "  pm.test(\"the webhook moved the payment from PENDING to SUCCESS\", function () { pm.expect(b.status).to.eql(\"SUCCESS\"); });",
+                  "}"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "6. User: payment declined",
+      "name": "7. Webhook checks (sent directly to Payment service)",
+      "item": [
+        {
+          "name": "Late FAILED webhook for a SUCCESS payment (200, ignored)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "url": {
+              "raw": "{{paymentServiceUrl}}/api/v1/webhooks/payment",
+              "host": [
+                "{{paymentServiceUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "webhooks",
+                "payment"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{webhookEventId}}\",\n  \"paymentId\": {{webhookPaymentId}},\n  \"status\": \"{{webhookStatus}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// a valid, signed call that arrives after the payment is already final",
+                  "pm.collectionVariables.set(\"webhookEventId\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                  "const eventId = pm.collectionVariables.get(\"webhookEventId\");",
+                  "const paymentId = pm.collectionVariables.get(\"paymentId\");",
+                  "const status = \"FAILED\";",
+                  "// same recipe as WebhookSignatureService: HMAC-SHA256 of eventId|paymentId|status, as hex",
+                  "const signature = CryptoJS.HmacSHA256(eventId + \"|\" + paymentId + \"|\" + status, pm.collectionVariables.get(\"webhookSecret\")).toString();",
+                  "pm.collectionVariables.set(\"webhookPaymentId\", paymentId);",
+                  "pm.collectionVariables.set(\"webhookStatus\", status);",
+                  "pm.collectionVariables.set(\"webhookSignature\", signature);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Payment is still SUCCESS after the late webhook (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "{{paymentId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"a final status is never changed by a webhook\", function () { pm.expect(pm.response.json().status).to.eql(\"SUCCESS\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Same webhook event, first call (200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "url": {
+              "raw": "{{paymentServiceUrl}}/api/v1/webhooks/payment",
+              "host": [
+                "{{paymentServiceUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "webhooks",
+                "payment"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{webhookEventId}}\",\n  \"paymentId\": {{webhookPaymentId}},\n  \"status\": \"{{webhookStatus}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// a new event id, saved so the next request can send the very same event again",
+                  "pm.collectionVariables.set(\"webhookEventId\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                  "const eventId = pm.collectionVariables.get(\"webhookEventId\");",
+                  "const paymentId = pm.collectionVariables.get(\"paymentId\");",
+                  "const status = \"SUCCESS\";",
+                  "// same recipe as WebhookSignatureService: HMAC-SHA256 of eventId|paymentId|status, as hex",
+                  "const signature = CryptoJS.HmacSHA256(eventId + \"|\" + paymentId + \"|\" + status, pm.collectionVariables.get(\"webhookSecret\")).toString();",
+                  "pm.collectionVariables.set(\"webhookPaymentId\", paymentId);",
+                  "pm.collectionVariables.set(\"webhookStatus\", status);",
+                  "pm.collectionVariables.set(\"webhookSignature\", signature);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Same webhook event, second call (200, duplicate ignored)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "url": {
+              "raw": "{{paymentServiceUrl}}/api/v1/webhooks/payment",
+              "host": [
+                "{{paymentServiceUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "webhooks",
+                "payment"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{webhookEventId}}\",\n  \"paymentId\": {{webhookPaymentId}},\n  \"status\": \"{{webhookStatus}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// the SAME event id as the request above, the gateway retrying",
+                  "const eventId = pm.collectionVariables.get(\"webhookEventId\");",
+                  "const paymentId = pm.collectionVariables.get(\"paymentId\");",
+                  "const status = \"SUCCESS\";",
+                  "// same recipe as WebhookSignatureService: HMAC-SHA256 of eventId|paymentId|status, as hex",
+                  "const signature = CryptoJS.HmacSHA256(eventId + \"|\" + paymentId + \"|\" + status, pm.collectionVariables.get(\"webhookSecret\")).toString();",
+                  "pm.collectionVariables.set(\"webhookPaymentId\", paymentId);",
+                  "pm.collectionVariables.set(\"webhookStatus\", status);",
+                  "pm.collectionVariables.set(\"webhookSignature\", signature);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "// the Payment service log shows: \"already processed, ignored\""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wrong signature (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Signature",
+                "value": "this-is-not-a-valid-signature"
+              }
+            ],
+            "url": {
+              "raw": "{{paymentServiceUrl}}/api/v1/webhooks/payment",
+              "host": [
+                "{{paymentServiceUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "webhooks",
+                "payment"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{webhookEventId}}\",\n  \"paymentId\": {{webhookPaymentId}},\n  \"status\": \"{{webhookStatus}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// body is fine, the header below is wrong on purpose",
+                  "pm.collectionVariables.set(\"webhookEventId\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                  "const eventId = pm.collectionVariables.get(\"webhookEventId\");",
+                  "const paymentId = pm.collectionVariables.get(\"paymentId\");",
+                  "const status = \"SUCCESS\";",
+                  "// same recipe as WebhookSignatureService: HMAC-SHA256 of eventId|paymentId|status, as hex",
+                  "const signature = CryptoJS.HmacSHA256(eventId + \"|\" + paymentId + \"|\" + status, pm.collectionVariables.get(\"webhookSecret\")).toString();",
+                  "pm.collectionVariables.set(\"webhookPaymentId\", paymentId);",
+                  "pm.collectionVariables.set(\"webhookStatus\", status);",
+                  "pm.collectionVariables.set(\"webhookSignature\", signature);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 401\", function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "No signature header (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{paymentServiceUrl}}/api/v1/webhooks/payment",
+              "host": [
+                "{{paymentServiceUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "webhooks",
+                "payment"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{webhookEventId}}\",\n  \"paymentId\": {{webhookPaymentId}},\n  \"status\": \"{{webhookStatus}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// no X-Signature header is sent",
+                  "pm.collectionVariables.set(\"webhookEventId\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                  "const eventId = pm.collectionVariables.get(\"webhookEventId\");",
+                  "const paymentId = pm.collectionVariables.get(\"paymentId\");",
+                  "const status = \"SUCCESS\";",
+                  "// same recipe as WebhookSignatureService: HMAC-SHA256 of eventId|paymentId|status, as hex",
+                  "const signature = CryptoJS.HmacSHA256(eventId + \"|\" + paymentId + \"|\" + status, pm.collectionVariables.get(\"webhookSecret\")).toString();",
+                  "pm.collectionVariables.set(\"webhookPaymentId\", paymentId);",
+                  "pm.collectionVariables.set(\"webhookStatus\", status);",
+                  "pm.collectionVariables.set(\"webhookSignature\", signature);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 401\", function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown payment id (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "url": {
+              "raw": "{{paymentServiceUrl}}/api/v1/webhooks/payment",
+              "host": [
+                "{{paymentServiceUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "webhooks",
+                "payment"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{webhookEventId}}\",\n  \"paymentId\": {{webhookPaymentId}},\n  \"status\": \"{{webhookStatus}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// valid signature, but no payment has this id",
+                  "pm.collectionVariables.set(\"webhookEventId\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                  "const eventId = pm.collectionVariables.get(\"webhookEventId\");",
+                  "const paymentId = 999999999;",
+                  "const status = \"SUCCESS\";",
+                  "// same recipe as WebhookSignatureService: HMAC-SHA256 of eventId|paymentId|status, as hex",
+                  "const signature = CryptoJS.HmacSHA256(eventId + \"|\" + paymentId + \"|\" + status, pm.collectionVariables.get(\"webhookSecret\")).toString();",
+                  "pm.collectionVariables.set(\"webhookPaymentId\", paymentId);",
+                  "pm.collectionVariables.set(\"webhookStatus\", status);",
+                  "pm.collectionVariables.set(\"webhookSignature\", signature);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404\", function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid status in the body (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "url": {
+              "raw": "{{paymentServiceUrl}}/api/v1/webhooks/payment",
+              "host": [
+                "{{paymentServiceUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "webhooks",
+                "payment"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{webhookEventId}}\",\n  \"paymentId\": {{webhookPaymentId}},\n  \"status\": \"{{webhookStatus}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// status must be SUCCESS, FAILED or PENDING",
+                  "pm.collectionVariables.set(\"webhookEventId\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                  "const eventId = pm.collectionVariables.get(\"webhookEventId\");",
+                  "const paymentId = pm.collectionVariables.get(\"paymentId\");",
+                  "const status = \"BOGUS\";",
+                  "// same recipe as WebhookSignatureService: HMAC-SHA256 of eventId|paymentId|status, as hex",
+                  "const signature = CryptoJS.HmacSHA256(eventId + \"|\" + paymentId + \"|\" + status, pm.collectionVariables.get(\"webhookSecret\")).toString();",
+                  "pm.collectionVariables.set(\"webhookPaymentId\", paymentId);",
+                  "pm.collectionVariables.set(\"webhookStatus\", status);",
+                  "pm.collectionVariables.set(\"webhookSignature\", signature);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. User: payment declined (webhook sends FAILED)",
       "item": [
         {
           "name": "Create an expensive show, price 6000 (201)",
@@ -908,13 +2073,17 @@
           ]
         },
         {
-          "name": "Book 2 seats above the payment limit (402)",
+          "name": "Book 2 seats above the payment limit (201, PENDING)",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{expensiveKey}}"
               }
             ],
             "url": {
@@ -950,19 +2119,93 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"expensiveKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status is 402\", function () { pm.response.to.have.status(402); });",
-                  "pm.test(\"message says the payment was declined\", function () { pm.expect(pm.response.json().message).to.include(\"declined\"); });"
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set(\"expensiveBookingId\", b.id);",
+                  "pm.test(\"accepted as PENDING, the decline comes later by webhook\", function () { pm.expect(b.status).to.eql(\"PENDING\"); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Seats were freed after the decline (200)",
+          "name": "Poll the booking until PAYMENT_FAILED (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{expensiveBookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{expensiveBookingId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// wait 1.5 s before each try, the result arrives asynchronously (webhook, Kafka)",
+                  "setTimeout(function () {}, 1500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const MAX_TRIES = 15;",
+                  "const n = Number(pm.collectionVariables.get(\"pollCount\") || 0) + 1;",
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const finished = b.status !== \"PENDING\" && b.status !== \"CREATED\";",
+                  "if (!finished && n < MAX_TRIES) {",
+                  "  // still processing: run this same request again (works in the Collection Runner and Newman)",
+                  "  pm.collectionVariables.set(\"pollCount\", n);",
+                  "  if (pm.execution && pm.execution.setNextRequest) { pm.execution.setNextRequest(pm.info.requestName); }",
+                  "  else { postman.setNextRequest(pm.info.requestName); }",
+                  "} else {",
+                  "  pm.collectionVariables.set(\"pollCount\", 0);",
+                  "  pm.test(\"booking is PAYMENT_FAILED, 12000 is above the 10000 limit\", function () { pm.expect(b.status).to.eql(\"PAYMENT_FAILED\"); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Poll the seats until they are freed (200)",
           "request": {
             "method": "GET",
             "header": [],
@@ -985,14 +2228,38 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// wait 1.5 s before each try, the result arrives asynchronously (webhook, Kafka)",
+                  "setTimeout(function () {}, 1500);"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "const MAX_TRIES = 15;",
+                  "const n = Number(pm.collectionVariables.get(\"pollCount\") || 0) + 1;",
                   "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "const ids = [pm.collectionVariables.get(\"badSeat1\"), pm.collectionVariables.get(\"badSeat2\")].map(String);",
-                  "const mine = pm.response.json().filter(function (s) { return ids.includes(String(s.id)); });",
-                  "pm.test(\"both seats are AVAILABLE\", function () { pm.expect(mine.length).to.eql(2); mine.forEach(function (s) { pm.expect(s.status).to.eql(\"AVAILABLE\"); }); });"
+                  "const b = pm.response.json();",
+                  "const finished = b.filter(function (s) { return (s.id == pm.collectionVariables.get(\"badSeat1\") || s.id == pm.collectionVariables.get(\"badSeat2\")) && s.status === \"AVAILABLE\"; }).length === 2;",
+                  "if (!finished && n < MAX_TRIES) {",
+                  "  // still processing: run this same request again (works in the Collection Runner and Newman)",
+                  "  pm.collectionVariables.set(\"pollCount\", n);",
+                  "  if (pm.execution && pm.execution.setNextRequest) { pm.execution.setNextRequest(pm.info.requestName); }",
+                  "  else { postman.setNextRequest(pm.info.requestName); }",
+                  "} else {",
+                  "  pm.collectionVariables.set(\"pollCount\", 0);",
+                  "  pm.test(\"both seats were released after the payment failed\", function () {",
+                  "    const mine = b.filter(function (s) { return s.id == pm.collectionVariables.get(\"badSeat1\") || s.id == pm.collectionVariables.get(\"badSeat2\"); });",
+                  "    pm.expect(mine.length).to.eql(2);",
+                  "    mine.forEach(function (s) { pm.expect(s.status).to.eql(\"AVAILABLE\"); });",
+                  "  });",
+                  "}"
                 ]
               }
             }
@@ -1001,7 +2268,7 @@
       ]
     },
     {
-      "name": "7. User: cancel",
+      "name": "9. User: cancel and refund",
       "item": [
         {
           "name": "Cancel my confirmed booking (200)",
@@ -1046,7 +2313,7 @@
           ]
         },
         {
-          "name": "Seats are AVAILABLE again in Cinema (200)",
+          "name": "Poll the seats until they are AVAILABLE again (200)",
           "request": {
             "method": "GET",
             "header": [],
@@ -1069,14 +2336,101 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// wait 1.5 s before each try, the result arrives asynchronously (webhook, Kafka)",
+                  "setTimeout(function () {}, 1500);"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "const MAX_TRIES = 15;",
+                  "const n = Number(pm.collectionVariables.get(\"pollCount\") || 0) + 1;",
                   "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "const ids = [pm.collectionVariables.get(\"seatId1\"), pm.collectionVariables.get(\"seatId2\")].map(String);",
-                  "const mine = pm.response.json().filter(function (s) { return ids.includes(String(s.id)); });",
-                  "pm.test(\"both seats are AVAILABLE\", function () { pm.expect(mine.length).to.eql(2); mine.forEach(function (s) { pm.expect(s.status).to.eql(\"AVAILABLE\"); }); });"
+                  "const b = pm.response.json();",
+                  "const finished = b.filter(function (s) { return (s.id == pm.collectionVariables.get(\"seatId1\") || s.id == pm.collectionVariables.get(\"seatId2\")) && s.status === \"AVAILABLE\"; }).length === 2;",
+                  "if (!finished && n < MAX_TRIES) {",
+                  "  // still processing: run this same request again (works in the Collection Runner and Newman)",
+                  "  pm.collectionVariables.set(\"pollCount\", n);",
+                  "  if (pm.execution && pm.execution.setNextRequest) { pm.execution.setNextRequest(pm.info.requestName); }",
+                  "  else { postman.setNextRequest(pm.info.requestName); }",
+                  "} else {",
+                  "  pm.collectionVariables.set(\"pollCount\", 0);",
+                  "  pm.test(\"both seats were released by the cancel\", function () {",
+                  "    const mine = b.filter(function (s) { return s.id == pm.collectionVariables.get(\"seatId1\") || s.id == pm.collectionVariables.get(\"seatId2\"); });",
+                  "    pm.expect(mine.length).to.eql(2);",
+                  "    mine.forEach(function (s) { pm.expect(s.status).to.eql(\"AVAILABLE\"); });",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Poll the payment until it is REFUNDED (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "{{paymentId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// wait 1.5 s before each try, the result arrives asynchronously (webhook, Kafka)",
+                  "setTimeout(function () {}, 1500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const MAX_TRIES = 15;",
+                  "const n = Number(pm.collectionVariables.get(\"pollCount\") || 0) + 1;",
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const finished = b.status !== \"SUCCESS\";",
+                  "if (!finished && n < MAX_TRIES) {",
+                  "  // still processing: run this same request again (works in the Collection Runner and Newman)",
+                  "  pm.collectionVariables.set(\"pollCount\", n);",
+                  "  if (pm.execution && pm.execution.setNextRequest) { pm.execution.setNextRequest(pm.info.requestName); }",
+                  "  else { postman.setNextRequest(pm.info.requestName); }",
+                  "} else {",
+                  "  pm.collectionVariables.set(\"pollCount\", 0);",
+                  "  pm.test(\"the cancel saga refunded the payment\", function () { pm.expect(b.status).to.eql(\"REFUNDED\"); });",
+                  "}"
                 ]
               }
             }
@@ -1085,7 +2439,7 @@
       ]
     },
     {
-      "name": "8. Gateway checks",
+      "name": "10. Gateway checks",
       "item": [
         {
           "name": "My bookings without a token (401, stopped at the Gateway)",
@@ -1160,6 +2514,14 @@
       "value": "http://localhost:8080"
     },
     {
+      "key": "paymentServiceUrl",
+      "value": "http://localhost:8083"
+    },
+    {
+      "key": "webhookSecret",
+      "value": "dev-only-secret"
+    },
+    {
       "key": "organizerEmail",
       "value": "organizer@ticket.com"
     },
@@ -1229,6 +2591,54 @@
     },
     {
       "key": "paymentId",
+      "value": ""
+    },
+    {
+      "key": "bookingKey",
+      "value": ""
+    },
+    {
+      "key": "rejectedKey",
+      "value": ""
+    },
+    {
+      "key": "rejectedBookingId",
+      "value": ""
+    },
+    {
+      "key": "paymentKey",
+      "value": ""
+    },
+    {
+      "key": "restPaymentId",
+      "value": ""
+    },
+    {
+      "key": "expensiveKey",
+      "value": ""
+    },
+    {
+      "key": "expensiveBookingId",
+      "value": ""
+    },
+    {
+      "key": "webhookEventId",
+      "value": ""
+    },
+    {
+      "key": "webhookPaymentId",
+      "value": ""
+    },
+    {
+      "key": "webhookStatus",
+      "value": ""
+    },
+    {
+      "key": "webhookSignature",
+      "value": ""
+    },
+    {
+      "key": "pollCount",
       "value": ""
     }
   ]
